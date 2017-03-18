@@ -11,15 +11,12 @@ import praw
 import requests
 import wikia
 from PIL import Image, ImageFont, ImageDraw
-from envious import load_env
 from prawcore import PrawcoreException
 from wit import Wit
 
 description = "A Discord bot based on Glyph from Mass Effect"
 
 bot = discord.Client()
-
-load_env()
 
 config = configparser.ConfigParser()
 config.read("config.ini")
@@ -35,8 +32,6 @@ spoilers_keywords = config.get("spoilers", "keywords").split(",")
 countdown_enabled = config.get("countdown", "enabled")
 fa_quickview_enabled = config.get("FA QuickView", "enabled")
 fa_quickview_thumbnail = config.get("FA QuickView", "thumbnail")
-print(environ)
-print(reddit_client_id)
 
 w = Wit(access_token=wit_token)
 r = praw.Reddit(client_id=reddit_client_id, client_secret=reddit_client_secret, user_agent=reddit_user_agent)
