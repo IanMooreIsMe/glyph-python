@@ -1,0 +1,7 @@
+configparser
+discord.py==0.16.7
+wit
+praw==4.4.0
+wikia
+pillow
+envious
