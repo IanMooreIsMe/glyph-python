@@ -7,6 +7,7 @@ from io import BytesIO
 from os import environ
 
 import discord
+from discord.ext import commands
 import praw
 import requests
 import wikia
@@ -72,6 +73,135 @@ async def update_countdown():
                     print("{}: Set icon to {} days!".format(server.name, text))
                 except discord.Forbidden:
                     print("{}: Failed to set icon. Permission 'Manage Server' is required!".format(server.name))
+
+async def send_message(destination, content=None, *, embed=None, expire_time=0):
+    if content is None and embed is None:
+        print("A message needs to have content!")
+        return None
+    msg = None
+    try:
+        msg = await bot.send_message(destination, content, embed=embed)
+
+        if msg and expire_time:
+            await asyncio.sleep(expire_time)
+            await delete_message(msg)
+    except discord.Forbidden:
+        print("{}: Cannot send message, no permission".format(destination.name))
+    except discord.NotFound:
+        print("{}: Cannot send message, invalid channel?".format(destination.name))
+
+    return msg
+
+async def edit_message(message, new=None, *, embed=None, expire_time=0, clear_reactions=False):
+    msg = None
+    if clear_reactions:
+        try:
+            await bot.clear_reactions(message)
+        except discord.Forbidden:
+            pass
+    try:
+        msg = await bot.edit_message(message, new, embed=embed)
+
+        if msg and expire_time:
+            await asyncio.sleep(expire_time)
+            await delete_message(msg)
+    except discord.NotFound:
+        print("Cannot edit message \"{}\", message not found".format(message.clean_content))
+
+    return msg
+
+async def delete_message(message):
+    try:
+        return await bot.delete_message(message)
+    except discord.Forbidden:
+        print("Cannot delete message \"{}\", no permission".format(message.clean_content))
+    except discord.NotFound:
+        print("Cannot delete message \"{}\", invalid channel?".format(message.clean_content))
+
+async def cmd_wiki(message, query):
+    if query is None:
+        await send_message(message.channel, "Sorry, I couldn't find a search query in your message.", expire_time=5)
+        return
+    try:
+        search = wikia.search(wikia_wiki, query)
+        page = wikia.page(wikia_wiki, search[0])
+        url = page.url.replace(" ", "_")
+        await bot.send_message(message.channel, url)
+    except (ValueError, wikia.wikia.WikiaError):
+        await send_message(message.channel, "Sorry, I have no information for your search query `{}`.".format(query),
+                           expire_time=5)
+
+async def cmd_role(message, desired_role):
+    if message.channel.is_private:
+        await send_message(message.channel, "You must be in a server to set your role.")
+        return
+    if desired_role is None:
+        await send_message(message.channel, "Sorry, I can not seem to find a desired role in your message.")
+        return
+    available_roles = []
+    new_role = None
+    for role in message.server.roles:
+        if role.permissions.manage_roles or not role.permissions.send_messages or role.is_everyone:
+            continue
+        if desired_role.lower() == role.name.lower():
+            new_role = role
+        available_roles.append(role)
+    if new_role is None:
+        friendly_available_roles = ""
+        for role in available_roles:
+            friendly_available_roles += ("`{}` ".format(role.name))
+        await bot.send_message(message.channel, "Sorry, but you can't be `{}`.\nAvailable roles are: {}".format(
+            desired_role, friendly_available_roles))
+        return
+    await bot.remove_roles(message.author, *available_roles)
+    await asyncio.sleep(.2)
+    await bot.add_roles(message.author, new_role)
+    role_change_message = "{} you are now a `{}`!".format(message.author.mention, new_role.name)
+    role_change_embed = discord.Embed(
+        title="Poof!", description=role_change_message, colour=0x42F465)
+    role_change_embed.set_thumbnail(url=message.author.avatar_url)
+    await send_message(message.channel, "", embed=role_change_embed)
+
+async def cmd_help(user):
+    help_title_embed = discord.Embed(
+        title="Glyph Usage Help",
+        description="The Glyph Discord bot employs an experimental concept of not using traditional commands "
+                    "and instead making everything chat based when mentioned with @Glyph or sent a DM. "
+                    "Currently Glyph can do a few basic tasks which are listed below. "
+                    "(Please keep in mind that Glyph is an experimental bot, "
+                    "and that all messages sent to it are checked by a human to see if it responded correctly, "
+                    "including private messages.)",
+        colour=0x4286F4)
+    help_wiki_embed = discord.Embed(
+        title="Wiki Search",
+        description="Ask Glyph a question such as \"Who is Commander Shepard?\" "
+                    "and Glyph will reply with the wiki page for Commander Shepard.",
+        colour=0xF4BF42)
+    help_role_embed = discord.Embed(
+        title="Role Setting",
+        description="If you ever want to change your vanity role just say something like \"Set me as Geth\"",
+        colour=0xF4BF42)
+    help_meme_embed = discord.Embed(
+        title="me irl",
+        description="Glyph is also capable of displaying memes from r/me_irl "
+                    "simply when you mention something such as \"crippling depression\" or \"me irl\".",
+        colour=0xF4BF42)
+    help_cute_embed = discord.Embed(
+        title="Catto, Doggo, Snek",
+        description="You can also ask Glyph to show a random picture of a catto, doggo, or snek "
+                    "simply by saying something like \"Show me pictures of fancy sneks\".",
+        colour=0xF4BF42)
+    help_status_embed = discord.Embed(
+        title="Status Checking",
+        description="Afraid Glyph is broken or not working, "
+                    "say something like \"ping\" or \"are you working?\" to verify.",
+        colour=0xF4BF42)
+    await send_message(user, embed=help_title_embed)
+    await send_message(user, embed=help_wiki_embed)
+    await send_message(user, embed=help_role_embed)
+    await send_message(user, embed=help_meme_embed)
+    await send_message(user, embed=help_cute_embed)
+    await send_message(user, embed=help_status_embed)
 
 
 @bot.event
@@ -148,104 +278,27 @@ async def on_message(message):
             wit_resp = w.message(clean_message)
             wit_intent = wit_resp["entities"]["intent"][0]["value"]
         except KeyError:
-            await bot.send_message(message.channel, "Sorry, I don't understand.\n"
-                                                    "If you need help, say `@{} help`.".format(bot.user.display_name))
+            await send_message(message.channel, "Sorry, I don't understand.\n"
+                                                "If you need help, say `@{} help`.".format(bot.user.display_name))
             return
+        try:
+            parameter = wit_resp["entities"]["wikipedia_search_query"][0]["value"]
+        except KeyError:
+            parameter = None
 
         if wit_intent == "wiki":
-            try:
-                query = wit_resp["entities"]["wikipedia_search_query"][0]["value"]
-            except KeyError:
-                await bot.send_message(message.channel, "Sorry, I can not seem to find a search query in your message.")
-                return
-            try:
-                search = wikia.search(wikia_wiki, query)
-                page = wikia.page(wikia_wiki, search[0])
-                url = page.url.replace(" ", "_")
-                await bot.send_message(message.channel, url)
-            except (ValueError, wikia.wikia.WikiaError):
-                await bot.send_message(message.channel,
-                                       "Sorry, I have no information for your search query `{}`.".format(query))
-                return
+            await cmd_wiki(message, parameter)
         elif wit_intent == "help":
-            help_title_embed = discord.Embed(
-                title="Glyph Usage Help",
-                description="The Glyph Discord bot employs an experimental concept of not using traditional commands "
-                            "and instead making everything chat based when mentioned with @Glyph or sent a DM. "
-                            "Currently Glyph can do a few basic tasks which are listed below. "
-                            "(Please keep in mind that Glyph is an experimental bot, "
-                            "and that all messages sent to it are checked by a human to see if it responded correctly, "
-                            "including private messages.)",
-                colour=0x4286F4)
-            help_wiki_embed = discord.Embed(
-                title="Wiki Search",
-                description="Ask Glyph a question such as \"Who is Commander Shepard?\" "
-                            "and Glyph will reply with the wiki page for Commander Shepard.",
-                colour=0xF4BF42)
-            help_role_embed = discord.Embed(
-                title="Role Setting",
-                description="If you ever want to change your vanity role just say something like \"Set me as Geth\"",
-                colour=0xF4BF42)
-            help_meme_embed = discord.Embed(
-                title="me irl",
-                description="Glyph is also capable of displaying memes from r/me_irl "
-                            "simply when you mention something such as \"crippling depression\" or \"me irl\".",
-                colour=0xF4BF42)
-            help_cute_embed = discord.Embed(
-                title="Catto, Doggo, Snek",
-                description="You can also ask Glyph to show a random picture of a catto, doggo, or snek "
-                            "simply by saying something like \"Show me pictures of fancy sneks\".",
-                colour=0xF4BF42)
-            help_status_embed = discord.Embed(
-                title="Status Checking",
-                description="Afraid Glyph is broken or not working, "
-                            "say something like \"ping\" or \"are you working?\" to verify.",
-                colour=0xF4BF42)
-            await bot.send_message(message.author, embed=help_title_embed)
-            await bot.send_message(message.author, embed=help_wiki_embed)
-            await bot.send_message(message.author, embed=help_role_embed)
-            await bot.send_message(message.author, embed=help_meme_embed)
-            await bot.send_message(message.author, embed=help_cute_embed)
-            await bot.send_message(message.author, embed=help_status_embed)
+            await cmd_help(message.author)
         elif wit_intent == "role":
-            if message.channel.is_private:
-                await bot.send_message(message.channel, "You must be in a server to set your role.")
-                return
-            try:
-                desired_role = wit_resp["entities"]["wikipedia_search_query"][0]["value"]
-            except KeyError:
-                await bot.send_message(message.channel, "Sorry, I can not seem to find a desired role in your message.")
-                return
-            available_roles = []
-            new_role = None
-            for role in message.server.roles:
-                if role.permissions.manage_roles or not role.permissions.send_messages or role.is_everyone:
-                    continue
-                if desired_role.lower() == role.name.lower():
-                    new_role = role
-                available_roles.append(role)
-            if new_role is None:
-                friendly_available_roles = ""
-                for role in available_roles:
-                    friendly_available_roles += ("`{}` ".format(role.name))
-                await bot.send_message(message.channel, "Sorry, but you can't be `{}`.\nAvailable roles are: {}".format(
-                    desired_role, friendly_available_roles))
-                return
-            await bot.remove_roles(message.author, *available_roles)
-            await asyncio.sleep(.2)
-            await bot.add_roles(message.author, new_role)
-            role_change_message = "{} you are now a `{}`!".format(message.author.mention, new_role.name)
-            role_change_embed = discord.Embed(
-                title="Poof!", description=role_change_message, colour=0x42F465)
-            role_change_embed.set_thumbnail(url=message.author.avatar_url)
-            await bot.send_message(message.channel, embed=role_change_embed)
+            await cmd_role(message, parameter)
         elif wit_intent == "status":
-            await bot.send_message(message.channel, ":ok_hand:")
+            await send_message(message.channel, ":ok_hand:")
         else:
             try:
                 multireddit = config.get("reddit", wit_intent)
                 submission = r.subreddit(multireddit).random()
-                await bot.send_message(message.channel, submission.url)
+                await send_message(message.channel, submission.url)
             except (praw.exceptions.ClientException, PrawcoreException.NotFound):
                 print("Wit Intent \"{}\" does nothing!".format(wit_intent))
 
@@ -258,13 +311,7 @@ async def on_reaction_add(reaction, user):
         removable = False
     if reaction.message.author == bot.user and reaction.emoji == "\u274C" and removable:
         embed = discord.Embed(description=":x: Removed!", colour=0xFF0000)
-        notify = await bot.edit_message(reaction.message, embed=embed)
-        try:
-            await bot.clear_reactions(notify)
-        except discord.Forbidden:
-            pass
-        await asyncio.sleep(5)
-        await bot.delete_message(notify)
+        await edit_message(reaction.message, embed=embed, expire_time=5, clear_reactions=True)
 
 
 bot.run(discord_token)
