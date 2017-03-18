@@ -55,7 +55,7 @@ async def update_countdown():
 
         draw = ImageDraw.Draw(img)
         large_font = ImageFont.truetype(font, size)
-        small_font = ImageFont.truetype(font, int(.50 * size))
+        small_font = ImageFont.truetype(font, int(.500 * size))
         pw, ph = small_font.getsize(prefix)
         tw, th = large_font.getsize(text)
         sw, sh = small_font.getsize(suffix)
@@ -69,9 +69,9 @@ async def update_countdown():
             for server in bot.servers:
                 try:
                     await bot.edit_server(server, icon=data.getvalue())
+                    print("{}: Set icon to {} days!".format(server.name, text))
                 except discord.Forbidden:
                     print("{}: Failed to set icon. Permission 'Manage Server' is required!".format(server.name))
-        print("{}: Set icon to {} days!".format(server.name, text))
 
 
 @bot.event
@@ -142,13 +142,14 @@ async def on_message(message):
     # Check if the message should be replied to
     if (bot.user in message.mentions) or (str(message.channel.type) == "private"):
         await bot.send_typing(message.channel)
-        clean_message = re.sub("@" + bot.user.display_name, "", message.clean_content)
+        clean_message = re.sub("@{}".format(bot.user.display_name), "", message.clean_content)
 
         try:
             wit_resp = w.message(clean_message)
             wit_intent = wit_resp["entities"]["intent"][0]["value"]
         except KeyError:
-            await bot.send_message(message.channel, "Sorry, I don't understand.\nIf you need help, say `@Gylph help`.")
+            await bot.send_message(message.channel, "Sorry, I don't understand.\n"
+                                                    "If you need help, say `@{} help`.".format(bot.user.display_name))
             return
 
         if wit_intent == "wiki":
@@ -250,7 +251,7 @@ async def on_message(message):
 
 
 @bot.event
-async def on_reaction_add(reaction):
+async def on_reaction_add(reaction, user):
     try:
         removable = ("React \u274C to delete this." in str(reaction.message.embeds[0]))
     except IndexError:
