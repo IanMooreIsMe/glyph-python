@@ -1,12 +1,13 @@
 # Glyph-Discord
 
 This is the source code for a bot that is used on a private, Mass Effect themed, Discord server.  
-This bot requires a valid configuration file and wit.ai app.
+This bot requires a valid configuration file, environmental varaibles and wit.ai app.
 
 Setup
 ---
 1. Download the release and extract to your desired folder
 2. Create a file called `config.ini` and copy in the example below, adding in your own tokens
+3. Make environmental variables for `DISCORD_TOKEN`, `REDDIT_CLIENT_ID`, `REDDIT_SECRET`, `REDDIT_USER_AGENT`, `WIT_TOKEN`
 
 Example Config
 ---
@@ -14,17 +15,10 @@ Example Config
 [discord]
 game = Armax Arsenal Arena
 
-[tokens]
-discord = YOUR_DISCORD_TOKEN
-wit = YOUR_WIT_TOKEN
-reddit = YOUR_REDDIT_CLIENT_SECRET
-
 [wikia]
 wiki = masseffect
 
 [reddit]
-client_id = YOUR_REDDIT_CLIENT_ID
-user_agent = YOUR_REDDIT_USER_AGENT
 meme = me_irl+meirl
 catto = thecatdimension+catpictures
 doggo = doggos+doge+dogpictures
@@ -43,4 +37,8 @@ size = 47
 color = 255,255,86
 prefix=
 suffix=+2
+
+[FA QuickView]
+enabled = true
+thumbnail = false
 ```

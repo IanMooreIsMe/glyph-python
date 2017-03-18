@@ -41,6 +41,7 @@ print(reddit_client_id)
 w = Wit(access_token=wit_token)
 r = praw.Reddit(client_id=reddit_client_id, client_secret=reddit_client_secret, user_agent=reddit_user_agent)
 
+
 async def update_countdown():
     if countdown_enabled.lower() == "true":
         date = config.get("countdown", "date")
