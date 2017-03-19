@@ -5,6 +5,7 @@ import re
 from datetime import datetime
 from io import BytesIO
 from os import environ
+import logging
 
 import discord
 import praw
@@ -14,27 +15,27 @@ from PIL import Image, ImageFont, ImageDraw
 from prawcore import PrawcoreException
 from wit import Wit
 
-description = "A Discord bot based on Glyph from Mass Effect"
-
 bot = discord.Client()
+log = logging.getLogger(__name__)
+log.setLevel(logging.INFO)
+ch = logging.StreamHandler()
+ch.setLevel(logging.INFO)
+log.addHandler(ch)
 
 config = configparser.ConfigParser()
 config.read("config.ini")
 discord_game = config.get("discord", "game")
-discord_token = environ.get("DISCORD_TOKEN")
 wikia_wiki = config.get("wikia", "wiki")
-wit_token = environ.get("WIT_TOKEN")
-reddit_client_id = environ.get("REDDIT_CLIENT_ID")
-reddit_client_secret = environ.get("REDDIT_SECRET")
-reddit_user_agent = environ.get("REDDIT_USER_AGENT")
 spoilers_channel = config.get("spoilers", "channel")
 spoilers_keywords = config.get("spoilers", "keywords").split(",")
 countdown_enabled = config.get("countdown", "enabled")
 fa_quickview_enabled = config.get("FA QuickView", "enabled")
 fa_quickview_thumbnail = config.get("FA QuickView", "thumbnail")
 
-w = Wit(access_token=wit_token)
-r = praw.Reddit(client_id=reddit_client_id, client_secret=reddit_client_secret, user_agent=reddit_user_agent)
+wit = Wit(access_token=environ.get("WIT_TOKEN"))
+reddit = praw.Reddit(client_id=environ.get("REDDIT_CLIENT_ID"),
+                     client_secret=environ.get("REDDIT_SECRET"),
+                     user_agent=environ.get("REDDIT_USER_AGENT"))
 
 
 async def update_countdown():
@@ -47,11 +48,11 @@ async def update_countdown():
         suffix = config.get("countdown", "suffix")
         prefix = config.get("countdown", "prefix")
         today = datetime.utcnow().date()
-        endday = datetime.strptime(date, "%Y-%m-%d").date()
-        diff = endday - today
+        end_day = datetime.strptime(date, "%Y-%m-%d").date()
+        diff = end_day - today
         text = str(diff.days)
         img = Image.open(icon)
-        W, H = img.size
+        iw, ih = img.size
 
         draw = ImageDraw.Draw(img)
         large_font = ImageFont.truetype(font, size)
@@ -59,7 +60,7 @@ async def update_countdown():
         pw, ph = small_font.getsize(prefix)
         tw, th = large_font.getsize(text)
         sw, sh = small_font.getsize(suffix)
-        x, y = (W - (pw + tw + sw)) / 2, (H - th - 15) / 2
+        x, y = (iw - (pw + tw + sw)) / 2, (ih - th - 15) / 2
         draw.text((x - tw, y + int(.5 * th)), prefix, (r, g, b), font=small_font)
         draw.text((x, y), text, (r, g, b), font=large_font)
         draw.text((x + tw, y + int(.5 * th)), suffix, (r, g, b), font=small_font)
@@ -69,13 +70,14 @@ async def update_countdown():
             for server in bot.servers:
                 try:
                     await bot.edit_server(server, icon=data.getvalue())
-                    print("{}: Set icon to {} days!".format(server.name, text))
+                    log.info("{}: Set icon to {} days!".format(server.name, text))
                 except discord.Forbidden:
-                    print("{}: Failed to set icon. Permission 'Manage Server' is required!".format(server.name))
+                    log.warning("{}: Failed to set icon. Permission 'Manage Server' is required!".format(server.name))
+
 
 async def send_message(destination, content=None, *, embed=None, expire_time=0):
     if content is None and embed is None:
-        print("A message needs to have content!")
+        log.error("A message needs to have content!")
         return None
     msg = None
     try:
@@ -85,11 +87,12 @@ async def send_message(destination, content=None, *, embed=None, expire_time=0):
             await asyncio.sleep(expire_time)
             await delete_message(msg)
     except discord.Forbidden:
-        print("{}: Cannot send message, no permission".format(destination.name))
+        log.warning("{}: Cannot send message, no permission".format(destination.name))
     except discord.NotFound:
-        print("{}: Cannot send message, invalid channel?".format(destination.name))
+        log.warning("{}: Cannot send message, invalid channel?".format(destination.name))
 
     return msg
+
 
 async def edit_message(message, new=None, *, embed=None, expire_time=0, clear_reactions=False):
     msg = None
@@ -105,17 +108,19 @@ async def edit_message(message, new=None, *, embed=None, expire_time=0, clear_re
             await asyncio.sleep(expire_time)
             await delete_message(msg)
     except discord.NotFound:
-        print("Cannot edit message \"{}\", message not found".format(message.clean_content))
+        log.warning("Cannot edit message \"{}\", message not found".format(message.clean_content))
 
     return msg
+
 
 async def delete_message(message):
     try:
         return await bot.delete_message(message)
     except discord.Forbidden:
-        print("Cannot delete message \"{}\", no permission".format(message.clean_content))
+        log.warning("Cannot delete message \"{}\", no permission".format(message.clean_content))
     except discord.NotFound:
-        print("Cannot delete message \"{}\", invalid channel?".format(message.clean_content))
+        log.warning("Cannot delete message \"{}\", invalid channel?".format(message.clean_content))
+
 
 async def cmd_wiki(message, query):
     if query is None:
@@ -129,6 +134,7 @@ async def cmd_wiki(message, query):
     except (ValueError, wikia.wikia.WikiaError):
         await send_message(message.channel, "Sorry, I have no information for your search query `{}`.".format(query),
                            expire_time=5)
+
 
 async def cmd_role(message, desired_role):
     if message.channel.is_private:
@@ -161,15 +167,16 @@ async def cmd_role(message, desired_role):
     role_change_embed.set_thumbnail(url=message.author.avatar_url)
     await send_message(message.channel, "", embed=role_change_embed)
 
+
 async def cmd_help(user):
     help_title_embed = discord.Embed(
         title="Glyph Usage Help",
         description="The Glyph Discord bot employs an experimental concept of not using traditional commands "
                     "and instead making everything chat based when mentioned with @Glyph or sent a DM. "
                     "Currently Glyph can do a few basic tasks which are listed below. "
-                    "(Please keep in mind that Glyph is an experimental bot, "
+                    "Please keep in mind that Glyph is an experimental bot, "
                     "and that all messages sent to it are checked by a human to see if it responded correctly, "
-                    "including private messages.)",
+                    "including private messages.",
         colour=0x4286F4)
     help_wiki_embed = discord.Embed(
         title="Wiki Search",
@@ -205,11 +212,10 @@ async def cmd_help(user):
 
 @bot.event
 async def on_ready():
-    print("Logged in as {} ({})".format(bot.user.name, bot.user.id))
-    print("------")
+    log.info("Logged in as {} ({})".format(bot.user.name, bot.user.id))
     await bot.change_presence(game=discord.Game(name=discord_game))
     for server in bot.servers:
-        print("{}: Connected to server.".format(server))
+        log.info("{}: Connected to server.".format(server))
     await update_countdown()
 
 
@@ -259,7 +265,7 @@ async def on_message(message):
                                         author, posted,
                                         rating, category, theme, species, gender,
                                         favorites, comments, views),
-                                    url=link, colour=color)
+                        url=link, colour=color)
                     embed.set_footer(text="React \u274C to delete this.")
                     if fa_quickview_thumbnail == "true":
                         download = submission_info.get("download")
@@ -274,7 +280,7 @@ async def on_message(message):
         clean_message = re.sub("@{}".format(bot.user.display_name), "", message.clean_content)
 
         try:
-            wit_resp = w.message(clean_message)
+            wit_resp = wit.message(clean_message)
             wit_intent = wit_resp["entities"]["intent"][0]["value"]
         except KeyError:
             await send_message(message.channel, "Sorry, I don't understand.\n"
@@ -296,10 +302,10 @@ async def on_message(message):
         else:
             try:
                 multireddit = config.get("reddit", wit_intent)
-                submission = r.subreddit(multireddit).random()
+                submission = reddit.subreddit(multireddit).random()
                 await send_message(message.channel, submission.url)
             except (praw.exceptions.ClientException, PrawcoreException.NotFound):
-                print("Wit Intent \"{}\" does nothing!".format(wit_intent))
+                log.error("Wit Intent \"{}\" does nothing!".format(wit_intent))
 
 
 @bot.event
@@ -313,4 +319,4 @@ async def on_reaction_add(reaction, user):
         await edit_message(reaction.message, embed=embed, expire_time=5, clear_reactions=True)
 
 
-bot.run(discord_token)
+bot.run(environ.get("DISCORD_TOKEN"))
