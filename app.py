@@ -7,7 +7,6 @@ from io import BytesIO
 from os import environ
 
 import discord
-from discord.ext import commands
 import praw
 import requests
 import wikia
@@ -126,7 +125,7 @@ async def cmd_wiki(message, query):
         search = wikia.search(wikia_wiki, query)
         page = wikia.page(wikia_wiki, search[0])
         url = page.url.replace(" ", "_")
-        await bot.send_message(message.channel, url)
+        await send_message(message.channel, url)
     except (ValueError, wikia.wikia.WikiaError):
         await send_message(message.channel, "Sorry, I have no information for your search query `{}`.".format(query),
                            expire_time=5)
@@ -150,7 +149,7 @@ async def cmd_role(message, desired_role):
         friendly_available_roles = ""
         for role in available_roles:
             friendly_available_roles += ("`{}` ".format(role.name))
-        await bot.send_message(message.channel, "Sorry, but you can't be `{}`.\nAvailable roles are: {}".format(
+        await send_message(message.channel, "Sorry, but you can't be `{}`.\nAvailable roles are: {}".format(
             desired_role, friendly_available_roles))
         return
     await bot.remove_roles(message.author, *available_roles)
@@ -265,7 +264,7 @@ async def on_message(message):
                     if fa_quickview_thumbnail == "true":
                         download = submission_info.get("download")
                         embed.set_thumbnail(url=download)
-                    await bot.send_message(message.channel, embed=embed)
+                    await send_message(message.channel, embed=embed)
                 except ValueError:
                     pass
         return
