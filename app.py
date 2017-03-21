@@ -309,6 +309,20 @@ async def on_message(message):
 
 
 @bot.event
+async def on_member_join(member):
+    server = member.server
+    await send_message(member, "Hello {}!\n"
+                               "I am Glyph, an info bot for Discord.\n"
+                               "I see you just joined *{}*, and would like to welcome you and let you know the rules.\n"
+                               "**Be kind.\nKeep channels on topic, and spoilers in #ark.\nHave fun.**\n"  # TODO Config
+                               "If you want to learn more about what I can do, say `help`!\n".format(member.name,
+                                                                                                     server.name))
+    for channel in server.channels:
+        if channel.is_default:
+            await send_message(channel, "Welcome {}!".format(member.mention))
+
+
+@bot.event
 async def on_reaction_add(reaction, user):
     try:
         removable = ("React \u274C to delete this." in str(reaction.message.embeds[0]))
