@@ -14,6 +14,7 @@ import wikia
 from PIL import Image, ImageFont, ImageDraw
 from prawcore import PrawcoreException
 from wit import Wit
+import fa
 
 bot = discord.Client()
 log = logging.getLogger(__name__)
@@ -229,7 +230,7 @@ async def on_message(message):
         await bot.add_reaction(message, "\u26A0")
         return
     # If FA link
-    far = re.compile("((http[s]?):\/\/)?(www\.)?(furaffinity.net)\/(\w*)\/(\d{8})\/?", re.IGNORECASE)
+    far = fa.Submission.regex
     if far.search(message.clean_content) and fa_quickview_enabled == "true":
         links = far.findall(message.clean_content)
         for link in links:
@@ -237,38 +238,20 @@ async def on_message(message):
             link_id = link[5]
             if link_type == "view":
                 try:
-                    get = requests.get("http://faexport.boothale.net/submission/{}.json".format(link_id)).text
-                    submission_info = json.loads(get)
-                    title = submission_info.get("title")
-                    author = submission_info.get("name")
-                    posted = submission_info.get("posted")
-                    category = submission_info.get("category")
-                    theme = submission_info.get("theme")
-                    species = submission_info.get("species")
-                    gender = submission_info.get("gender")
-                    favorites = submission_info.get("favorites")
-                    comments = submission_info.get("comments")
-                    views = submission_info.get("views")
-                    rating = submission_info.get("rating")
-                    link = submission_info.get("link")
-                    if rating == "General":
-                        color = 0x10FF00
-                    elif rating == "Mature":
-                        color = 0x0026FF
-                    else:  # rating=="Adult"
-                        color = 0xFF0000
+                    submission = fa.Submission(id=link_id)
                     embed = discord.Embed(
-                        title=title,
+                        title=submission.title,
                         description="Posted by {} at {}\n"
                                     "{} > {} > {} > {} > {}\n"
                                     "Favorites: {} | Comments: {} | Views: {}".format(
-                                        author, posted,
-                                        rating, category, theme, species, gender,
-                                        favorites, comments, views),
-                        url=link, colour=color)
-                    embed.set_footer(text="React \u274C to delete this.")
+                                        submission.author, submission.posted,
+                                        submission.rating, submission.category, submission.theme, submission.species, submission.gender,
+                                        submission.favorites, submission.comments, submission.views),
+                        url=submission.link, colour=submission.color)
+                    embed.set_footer(text="React \u274C to delete this. "
+                                          "React \U0001F48C to receive full size image in a DM.")
                     if fa_quickview_thumbnail == "true":
-                        download = submission_info.get("download")
+                        download = submission.download
                         embed.set_thumbnail(url=download)
                     await send_message(message.channel, embed=embed)
                 except ValueError:
@@ -324,13 +307,33 @@ async def on_member_join(member):
 
 @bot.event
 async def on_reaction_add(reaction, user):
+    message = reaction.message
+    removable = False
+    is_fa_quickview = False
+    if not reaction.message.author == bot.user:
+        return
     try:
-        removable = ("React \u274C to delete this." in str(reaction.message.embeds[0]))
+        removable = ("React \u274C to delete this." in str(message.embeds[0]))
+        is_fa_quickview = ("React \U0001F48C to receive full size image in a DM." in str(message.embeds[0]))
     except IndexError:
-        removable = False
-    if reaction.message.author == bot.user and reaction.emoji == "\u274C" and removable:
+        pass
+    if reaction.emoji == "\u274C" and removable:
         embed = discord.Embed(description=":x: Removed!", colour=0xFF0000)
         await edit_message(reaction.message, embed=embed, expire_time=5, clear_reactions=True)
+    elif reaction.emoji == "\U0001F48C" and is_fa_quickview:
+        # try:
+        #     await bot.remove_reaction(message, "\U0001F48C️", user)
+        # except discord.Forbidden or discord.HTTPException:
+        #     pass
+        try:
+            embed = message.embeds[0]
+            submission = fa.Submission(embed['url'])
+            embed = discord.Embed(title=submission.title, url=submission.link, colour=submission.color)
+            embed.set_footer(text="React \u274C to delete this.")
+            embed.set_image(url=submission.download)
+            await send_message(user, embed=embed)
+        except ValueError:
+            await send_message(user, "Sorry, I failed to get the full sized image for you.")
 
 
 bot.run(environ.get("DISCORD_TOKEN"))
