@@ -294,7 +294,7 @@ class Glyph(discord.Client):
             pass
         if reaction.emoji == "\u274C" and removable:
             embed = discord.Embed(description=":x: Removed!", color=0xFF0000)
-            await self.edit_message(reaction.message, embed=embed, expire_time=5, clear_reactions=True)
+            await self.safe_edit_message(reaction.message, embed=embed, expire_time=5, clear_reactions=True)
         elif reaction.emoji == "\U0001F48C" and is_fa_quickview:
             # try:
             #     await bot.remove_reaction(message, "\U0001F48C️", user)
@@ -316,5 +316,5 @@ class Glyph(discord.Client):
                              "Removed reaction {} from {}".format(reaction.emoji, reaction.message.content), user=user)
 
 bot = Glyph()
-modlog = modlogger.Logger(bot, "log")
+modlog = modlogger.Logger(bot, "log")  # TODO: Use config to set logging channel
 bot.run(environ.get("DISCORD_TOKEN"))
