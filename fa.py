@@ -1,13 +1,14 @@
 import requests
 import json
 import re
+from discord import Embed
 
 
 class Submission(object):
 
     regex = re.compile("((http[s]?):\/\/)?(www\.)?(furaffinity.net)\/(\w*)\/(\d{8})\/?", re.IGNORECASE)
 
-    def __init__(self, url=None, id=None):
+    def __init__(self, *, url=None, id=None):
         if url is not None:
             url_format = re.compile("((http[s]?):\/\/)?(www\.)?(furaffinity.net)\/(\w*)\/(\d{8})\/?", re.IGNORECASE)
             link = url_format.search(url)
@@ -36,3 +37,21 @@ class Submission(object):
             self.color = 0x0026FF
         else:  # rating=="Adult"
             self.color = 0xFF0000
+
+    def get_embed(self, *, thumbnail=False):
+        embed = Embed(
+            title=self.title,
+            description="Posted by {} at {}\n"
+                        "{} > {} > {} > {} > {}\n"
+                        "Favorites: {} | Comments: {} | Views: {}".format(
+                            self.author, self.posted,
+                            self.rating, self.category, self.theme,
+                            self.species, self.gender,
+                            self.favorites, self.comments, self.views),
+                        url=self.link, color=self.color)
+        embed.set_footer(text="React \u274C to delete this. "
+                              "React \U0001F48C to receive full size image in a DM.")
+        if thumbnail:
+            download = self.download
+            embed.set_thumbnail(url=download)
+        return embed
