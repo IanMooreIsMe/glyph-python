@@ -3,7 +3,6 @@ import configparser
 import re
 from os import environ
 import logging
-import json
 import random
 
 import discord
@@ -192,7 +191,7 @@ class GlyphBot(discord.Client):
                     submission = self.reddit.subreddit(multireddit).random()
                 except TypeError:
                     continue
-                if ".png" in submission.url:
+                if any(extension in submission.url for extension in [".png", ".jpg", ".jpeg", ".gif"]):
                     break
             embed = discord.Embed(title=submission.title, url=submission.shortlink)
             embed.set_footer(text="React \u274C to delete this.")
@@ -212,6 +211,8 @@ class GlyphBot(discord.Client):
         await self.safe_send_message(message.channel, response)
 
     async def cmd_help(self, message):
+        if message.channel.type is not discord.ChannelType.private:
+            await self.safe_send_message(message.channel, "Sending you a PM now.", expire_time=5)
         help_embed = discord.Embed(
             title="Glyph Help",
             description=self.get_config_message("help", message.author, message.server),

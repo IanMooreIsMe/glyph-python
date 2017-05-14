@@ -4,4 +4,3 @@ wit
 praw==4.4.0
 wikia
 pillow
-envious
