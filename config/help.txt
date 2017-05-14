@@ -1,0 +1,12 @@
+Unlike traditional bots, __I do not use commands__.
+Instead, you can ask me to do what you want by writing your message and @mentioning me, and if I know how to do it, I will do it.
+
+**Example Messages**
+*Set me as Turian* (if the server has cosmetic roles, the one you request will be applied)
+*Show me a some dank memes* (a meme will be grabbed from Reddit and shown)
+
+**Other Features**
+*Links to submissions on Furaffinity will result in a quick stats overview being posted (includes rating, favorites, etc.)*
+*Messages that contain keywords for spoilers (as defined by the server) will reacted to with a warning if not in the appropriate text channels.*
+
+The bot is constantly evolving, learning, and more features being added. Be sure to check out the wiki (once available).

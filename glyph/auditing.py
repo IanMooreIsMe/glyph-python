@@ -19,23 +19,23 @@ STATUS = Type("Bot Status", 0x929392)
 
 class Logger(object):
 
-    def __init__(self, client, log_channel):
+    def __init__(self, client):
         if not isinstance(client, discord.Client):
             raise ValueError("client must be an instance of class discord.Client")
         self.bot = client
-        self.log_channel_name = log_channel
 
-    async def log(self, server, type, message, *, user=None):
+    async def log(self, server, log_type, message, *, user=None):
+        log_channel = "log"
         if not isinstance(server, discord.Server):
             raise ValueError("server must be an instance of class discord.Server")
-        if not isinstance(type, Type):
+        if not isinstance(log_type, Type):
             raise ValueError("type must be an instance of class modlogger.Type")
         for channel in server.channels:
-            if channel.name == self.log_channel_name:
-                embed = discord.Embed(title=type.message,
+            if channel.name == log_channel:
+                embed = discord.Embed(title=log_type.message,
                                       description=message,
-                                      color=type.color)
-                embed.set_footer(text=time.strftime("%Y-%m-%d %H:%M:%S"))
+                                      color=log_type.color)
+                embed.set_footer(text=time.strftime("On %Y-%m-%d at %H:%M:%S"))
                 if user is not None:
-                    embed.set_author(name=user.name, icon_url=user.avatar_url)
+                    embed.set_author(name=user, icon_url=user.avatar_url)
                 await self.bot.safe_send_message(channel, embed=embed)
