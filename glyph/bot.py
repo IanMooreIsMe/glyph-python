@@ -184,6 +184,8 @@ class GlyphBot(discord.Client):
             try:
                 multireddit = wit["entities"]["multireddit"][0]["metadata"]
             except KeyError:
+                await self.safe_send_message(message.channel, "I think you wanted an image from Reddit, "
+                                                              "but I'm not sure of what. Sorry.")
                 return
         try:
             while True:  # Get an image that can be embedded
