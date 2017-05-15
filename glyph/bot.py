@@ -310,9 +310,9 @@ class GlyphBot(discord.Client):
     async def on_member_join(self, member):
         if self.config.getboolean("modlog", "joins"):
             await self.audit.log(member.server, auditing.MEMBER_JOIN,
-                                 "{} joined the server.".format(member.name), user=member)  # Mod log
+                                 "{} joined the server.".format(member.mention), user=member)  # Mod log
         server = member.server
-        text = await self.get_config_message("welcome", member, server)
+        text = self.get_config_message("welcome", member, server)
         welcome_embed = discord.Embed(
             title="Welcome to {}!".format(server.name),
             description=text,
@@ -325,9 +325,9 @@ class GlyphBot(discord.Client):
     async def on_member_remove(self, member):
         if self.config.getboolean("modlog", "leaves"):
             await self.audit.log(member.server, auditing.MEMBER_LEAVE,
-                                 "{} left the server.".format(member.name), user=member)
+                                 "{} left the server.".format(member.mention), user=member)
         # TODO: Find a way to send people invites when they aren't on a server with the bot
-        invite = self.create_invite(member.server)
+        invite = self.create_invite(member.server).url
         await self.safe_send_message(member, "Did you leave {} by accident? Here's a reinvite: {}".format(member.server,
                                                                                                           invite))
 
