@@ -295,9 +295,13 @@ class GlyphBot(discord.Client):
             elif command == "conversation":
                 await self.cmd_conversation(message, wit)
             else:
+                help_command = "help"
+                if message.channel.type is not discord.ChannelType.private:
+                    help_command = "@{} help".format(self.user.display_name)
                 await self.safe_send_message(message.channel,
-                                             "Sorry, I don't understand.\n"
-                                             "If you need help, say `@{} help`.".format(self.user.display_name))
+                                             "Sorry, I don't understand (yet).\n"
+                                             "If you need help, say `{}`.".format(help_command),
+                                             expire_time=15)
 
     async def on_member_join(self, member):
         if self.config.getboolean("modlog", "joins"):
@@ -342,10 +346,7 @@ class GlyphBot(discord.Client):
                 embed = discord.Embed(title=submission.title, url=submission.link, colour=submission.color)
                 embed.set_footer(text="React \u274C to delete this.")
                 embed.set_image(url=submission.download)
-                msg = await self.safe_send_message(user, embed=embed)
-                await self.wait_for_reaction(message=msg, check=self.react_to_remove)
-                embed = discord.Embed(description=":x: Removed!", color=0xFF0000)
-                await self.safe_edit_message(msg, embed=embed, expire_time=5, clear_reactions=True)
+                await self.safe_send_message(user, embed=embed, removable=True)
             except ValueError:
                 await self.safe_send_message(user, "Sorry, I failed to get the full sized image for you.")
 
