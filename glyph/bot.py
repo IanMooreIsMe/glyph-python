@@ -11,6 +11,7 @@ import wikia
 
 from wit import Wit
 from . import fa
+from . import picarto
 from . import auditing
 from .countdown import Countdown
 
@@ -53,6 +54,8 @@ class GlyphBot(discord.Client):
         if content is None and embed is None:
             log.error("A message needs to have content!")
             return None
+        elif embed is not None and removable:
+            embed.set_footer(text="React \u274C to delete this.")
         msg = None
         try:
             msg = await self.send_message(destination, content, embed=embed)
@@ -60,13 +63,6 @@ class GlyphBot(discord.Client):
             if msg and expire_time:
                 await asyncio.sleep(expire_time)
                 await self.delete_message(msg)
-            elif msg and removable:
-                def react_to_remove(reaction, user):
-                    emoji = str(reaction.emoji)
-                    return emoji.startswith("\u274C")
-                await self.wait_for_reaction(message=msg, check=react_to_remove)
-                embed = discord.Embed(description=":x: Removed!", color=0xFF0000)
-                await self.safe_edit_message(msg, embed=embed, expire_time=5, clear_reactions=True)
         except discord.Forbidden:
             log.warning("{}: Cannot send message, no permission".format(destination.name))
         except discord.NotFound:
@@ -74,7 +70,10 @@ class GlyphBot(discord.Client):
 
         return msg
 
-    async def safe_edit_message(self, message, new=None, *, embed=None, expire_time=0, clear_reactions=False):
+    async def safe_edit_message(self, message, new=None, *,
+                                embed=None, expire_time=0, clear_reactions=False, removable=False):
+        if embed is not None and removable:
+            embed.set_footer(text="React \u274C to delete this.")
         msg = None
         if clear_reactions:
             try:
@@ -203,9 +202,8 @@ class GlyphBot(discord.Client):
                 if any(extension in submission.url for extension in [".png", ".jpg", ".jpeg", ".gif"]):
                     break
             embed = discord.Embed(title=submission.title, url=submission.shortlink)
-            embed.set_footer(text="React \u274C to delete this.")
             embed.set_image(url=submission.url)
-            msg = await self.safe_send_message(message.channel, embed=embed, removable=True)
+            await self.safe_send_message(message.channel, embed=embed, removable=True)
         except praw.exceptions.ClientException:
             await self.safe_send_message(message.channel, "Sorry, I had an issue communicating with Reddit.")
 
@@ -246,9 +244,9 @@ class GlyphBot(discord.Client):
                     message.channel.name == spoilers_channel):
             await self.add_reaction(message, "\u26A0")
         # FA QuickView
-        far = fa.Submission.regex
-        if far.search(message.clean_content) and self.config.getboolean("FA QuickView", "enabled"):
-            links = far.findall(message.clean_content)
+        r = fa.Submission.regex
+        if r.search(message.clean_content) and self.config.getboolean("FA QuickView", "enabled"):
+            links = r.findall(message.clean_content)
             for link in links:
                 link_type = link[4]
                 link_id = link[5]
@@ -259,7 +257,18 @@ class GlyphBot(discord.Client):
                         await self.safe_send_message(message.channel, embed=embed, removable=True)
                     except ValueError:
                         pass
-            return
+        # Picarto QuickView
+        r = picarto.Channel.regex
+        if r.search(message.clean_content) and self.config.getboolean("Picarto QuickView", "enabled"):
+            links = r.findall(message.clean_content)
+            for link in links:
+                link_name = link[4]
+                try:
+                    channel = picarto.Channel(name=link_name)
+                    embed = channel.get_embed()
+                    await self.safe_send_message(message.channel, embed=embed, removable=True)
+                except ValueError:
+                    pass
         # Check if the message should be replied to
         if (self.user in message.mentions) or (message.channel.type is discord.ChannelType.private):
             await self.send_typing(message.channel)
@@ -327,21 +336,26 @@ class GlyphBot(discord.Client):
             await self.audit.log(reaction.message.server, auditing.REACTION_ADD,
                                  "Added reaction {} to {}".format(reaction.emoji, reaction.message.content), user=user)
         message = reaction.message
+        removable = False
         is_fa_quickview = False
         if not reaction.message.author == self.user:
             return
         try:
+            removable = ("React \u274C to delete this." in str(message.embeds[0]))
             is_fa_quickview = ("React \U0001F48C to receive full size image in a DM." in str(message.embeds[0]))
         except IndexError:
             pass
-        if reaction.emoji == "\U0001F48C" and is_fa_quickview:
+        if reaction.emoji == "\u274C" and removable:
+            embed = discord.Embed(description=":x: Removed!", color=0xFF0000)
+            await self.safe_edit_message(reaction.message, embed=embed, expire_time=5, clear_reactions=True)
+        elif reaction.emoji == "\U0001F48C" and is_fa_quickview:
             try:
                 embed = message.embeds[0]
                 submission = fa.Submission(url=embed['url'])
                 embed = discord.Embed(title=submission.title, url=submission.link, colour=submission.color)
                 embed.set_footer(text="React \u274C to delete this.")
                 embed.set_image(url=submission.download)
-                await self.safe_send_message(user, embed=embed, removable=True)
+                await self.safe_send_message(user, embed=embed)
             except ValueError:
                 await self.safe_send_message(user, "Sorry, I failed to get the full sized image for you.")
 

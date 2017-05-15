@@ -1,6 +1,6 @@
 configparser
 discord.py==0.16.7
 wit
-praw==4.4.0
+praw==4.5.1
 wikia
 pillow
