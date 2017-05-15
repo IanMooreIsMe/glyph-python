@@ -49,7 +49,7 @@ class GlyphBot(discord.Client):
             text = text.replace("{SERVER}", server)
         return text
 
-    async def safe_send_message(self, destination, content=None, *, embed=None, expire_time=0):
+    async def safe_send_message(self, destination, content=None, *, embed=None, expire_time=0, removable=False):
         if content is None and embed is None:
             log.error("A message needs to have content!")
             return None
@@ -60,6 +60,13 @@ class GlyphBot(discord.Client):
             if msg and expire_time:
                 await asyncio.sleep(expire_time)
                 await self.delete_message(msg)
+            elif msg and removable:
+                def react_to_remove(reaction, user):
+                    emoji = str(reaction.emoji)
+                    return emoji.startswith("\u274C")
+                await self.wait_for_reaction(message=msg, check=react_to_remove)
+                embed = discord.Embed(description=":x: Removed!", color=0xFF0000)
+                await self.safe_edit_message(msg, embed=embed, expire_time=5, clear_reactions=True)
         except discord.Forbidden:
             log.warning("{}: Cannot send message, no permission".format(destination.name))
         except discord.NotFound:
@@ -173,7 +180,7 @@ class GlyphBot(discord.Client):
         await self.safe_remove_roles(target_user, *available_roles)  # Remove all old roles
         await asyncio.sleep(.2)  # Wait because of rate limiting
         await self.safe_add_roles(target_user, new_role)  # Add the new role
-        role_change_message = "{} you are now a `{}`!".format(target_user.mention, new_role.name)
+        role_change_message = "{} you are now a {}!".format(target_user.mention, new_role.mention)
         role_change_embed = discord.Embed(
             title="Poof!", description=role_change_message, colour=0x42F465)
         role_change_embed.set_thumbnail(url=target_user.avatar_url)
@@ -198,12 +205,12 @@ class GlyphBot(discord.Client):
             embed = discord.Embed(title=submission.title, url=submission.shortlink)
             embed.set_footer(text="React \u274C to delete this.")
             embed.set_image(url=submission.url)
-            await self.safe_send_message(message.channel, embed=embed)
+            msg = await self.safe_send_message(message.channel, embed=embed, removable=True)
         except praw.exceptions.ClientException:
             await self.safe_send_message(message.channel, "Sorry, I had an issue communicating with Reddit.")
 
     async def cmd_conversation(self, message, wit):
-        response = "Sorry, I don't understand.\nIf you need help, say `@{} help`.".format(self.user.display_name)
+        response = "I feel like I should know what to say, but haven't learned yet, try asking me again later."
         if wit is not None:
             try:
                 canned_responses = wit["entities"]["canned_response"][0]["metadata"].split("\n")
@@ -259,7 +266,7 @@ class GlyphBot(discord.Client):
                     try:
                         submission = fa.Submission(id=link_id)
                         embed = submission.get_embed(thumbnail=self.config.getboolean("FA QuickView", "thumbnail"))
-                        await self.safe_send_message(message.channel, embed=embed)
+                        await self.safe_send_message(message.channel, embed=embed, removable=True)
                     except ValueError:
                         pass
             return
@@ -321,32 +328,30 @@ class GlyphBot(discord.Client):
             await self.audit.log(reaction.message.server, auditing.REACTION_ADD,
                                  "Added reaction {} to {}".format(reaction.emoji, reaction.message.content), user=user)
         message = reaction.message
-        removable = False
         is_fa_quickview = False
         if not reaction.message.author == self.user:
             return
         try:
-            removable = ("React \u274C to delete this." in str(message.embeds[0]))
             is_fa_quickview = ("React \U0001F48C to receive full size image in a DM." in str(message.embeds[0]))
         except IndexError:
             pass
-        if reaction.emoji == "\u274C" and removable:
-            embed = discord.Embed(description=":x: Removed!", color=0xFF0000)
-            await self.safe_edit_message(reaction.message, embed=embed, expire_time=5, clear_reactions=True)
-        elif reaction.emoji == "\U0001F48C" and is_fa_quickview:
+        if reaction.emoji == "\U0001F48C" and is_fa_quickview:
             try:
                 embed = message.embeds[0]
                 submission = fa.Submission(url=embed['url'])
                 embed = discord.Embed(title=submission.title, url=submission.link, colour=submission.color)
                 embed.set_footer(text="React \u274C to delete this.")
                 embed.set_image(url=submission.download)
-                await self.safe_send_message(user, embed=embed)
+                msg = await self.safe_send_message(user, embed=embed)
+                await self.wait_for_reaction(message=msg, check=self.react_to_remove)
+                embed = discord.Embed(description=":x: Removed!", color=0xFF0000)
+                await self.safe_edit_message(msg, embed=embed, expire_time=5, clear_reactions=True)
             except ValueError:
                 await self.safe_send_message(user, "Sorry, I failed to get the full sized image for you.")
 
     async def on_reaction_remove(self, reaction, user):
         if self.config.getboolean("modlog", "reactions"):
-            await self.audit.log(reaction.message.server, auditing.REACTION_ADD,
+            await self.audit.log(reaction.message.server, auditing.REACTION_REMOVE,
                                  "Removed reaction {} from {}".format(reaction.emoji, reaction.message.content),
                                  user=user)
 
