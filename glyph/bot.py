@@ -209,16 +209,6 @@ class GlyphBot(discord.Client):
         except praw.exceptions.ClientException:
             await self.safe_send_message(message.channel, "Sorry, I had an issue communicating with Reddit.")
 
-    async def cmd_conversation(self, message, wit):
-        response = "I feel like I should know what to say, but haven't learned yet, try asking me again later."
-        if wit is not None:
-            try:
-                canned_responses = wit["entities"]["canned_response"][0]["metadata"].split("\n")
-                response = random.choice(canned_responses)
-            except KeyError:
-                pass
-        await self.safe_send_message(message.channel, response)
-
     async def cmd_help(self, message):
         if message.channel.type is not discord.ChannelType.private:
             await self.safe_send_message(message.channel, "Sending you a PM now.", expire_time=5)
@@ -292,16 +282,21 @@ class GlyphBot(discord.Client):
                 await self.safe_send_message(message.channel, ":ok_hand:")
             elif command == "reddit":
                 await self.cmd_reddit(message, wit)
-            elif command == "conversation":
-                await self.cmd_conversation(message, wit)
             else:
-                help_command = "help"
-                if message.channel.type is not discord.ChannelType.private:
-                    help_command = "@{} help".format(self.user.display_name)
-                await self.safe_send_message(message.channel,
-                                             "Sorry, I don't understand (yet).\n"
-                                             "If you need help, say `{}`.".format(help_command),
-                                             expire_time=15)
+                response = "I feel like I should know what to say, but haven't learned yet, try asking me again later."
+                if wit is not None:
+                    try:
+                        canned_responses = wit["entities"]["canned_response"][0]["metadata"].split("\n")
+                        response = random.choice(canned_responses)
+                    except KeyError:
+                        help_command = "help"
+                        if message.channel.type is not discord.ChannelType.private:
+                            help_command = "@{} help".format(self.user.display_name)
+                        await self.safe_send_message(message.channel,
+                                                     "Sorry, I don't understand (yet).\n"
+                                                     "If you need help, say `{}`.".format(help_command))
+                        return
+                await self.safe_send_message(message.channel, response)
 
     async def on_member_join(self, member):
         if self.config.getboolean("modlog", "joins"):
