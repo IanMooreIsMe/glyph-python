@@ -25,8 +25,6 @@ class Logger(object):
         self.bot = client
 
     async def log(self, server, audit, message, *, user):
-        if user is None:
-            user = self.bot
         log_channel = "log"
         if not isinstance(server, discord.Server):
             raise ValueError("server must be an instance of class discord.Server")
@@ -34,9 +32,7 @@ class Logger(object):
             raise ValueError("type must be an instance of class modlogger.Type")
         for channel in server.channels:
             if channel.name == log_channel:
-                embed = discord.Embed(title=str(user),
-                                      description=message,
-                                      color=audit.color)
+                embed = discord.Embed(description=message, color=audit.color)
                 embed.set_footer(text=time.strftime("On %Y-%m-%d at %H:%M:%S"))
                 if user is not None:
                     embed.set_author(name=audit.title, icon_url=user.avatar_url)

@@ -340,7 +340,9 @@ class GlyphBot(discord.Client):
     async def on_reaction_add(self, reaction, user):
         if self.config.getboolean("modlog", "reactions"):
             await self.audit.log(reaction.message.server, auditing.REACTION_ADD,
-                                 "Added reaction {} to {}".format(reaction.emoji, reaction.message.content), user=user)
+                                 "{} added reaction {} to {}".format(user.mention,
+                                                                     reaction.emoji, reaction.message.content),
+                                 user=user)
         message = reaction.message
         removable = False
         is_fa_quickview = False
@@ -368,7 +370,8 @@ class GlyphBot(discord.Client):
     async def on_reaction_remove(self, reaction, user):
         if self.config.getboolean("modlog", "reactions"):
             await self.audit.log(reaction.message.server, auditing.REACTION_REMOVE,
-                                 "Removed reaction {} from {}".format(reaction.emoji, reaction.message.content),
+                                 "{} removed reaction {} from {}".format(user.mention,
+                                                                         reaction.emoji, reaction.message.content),
                                  user=user)
 
 
