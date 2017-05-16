@@ -2,5 +2,5 @@ configparser
 discord.py==0.16.7
 wit
 praw==4.5.1
-wikia
+wikia==1.4.3
 pillow

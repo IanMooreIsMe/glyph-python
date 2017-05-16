@@ -127,7 +127,12 @@ class GlyphBot(discord.Client):
             search = wikia.search(wiki, query)
             page = wikia.page(wiki, search[0])
             url = page.url.replace(" ", "_")
-            await self.safe_send_message(message.channel, url)
+            embed = discord.Embed(title=page.title, url=url, description=page.summary)
+            try:
+                embed.set_thumbnail(url=page.images[0])
+            except IndexError:
+                pass
+            await self.safe_send_message(message.channel, embed=embed, removable=True)
         except (ValueError, wikia.wikia.WikiaError):
             await self.safe_send_message(message.channel,
                                          "Sorry, I have no information for your search query `{}`.".format(query),
@@ -275,6 +280,7 @@ class GlyphBot(discord.Client):
             await self.send_typing(message.channel)
             clean_message = re.sub("@{}".format(self.user.display_name), "", message.clean_content)
 
+            wit = None
             command = None
             try:
                 wit = self.wit.message(clean_message)
@@ -327,10 +333,9 @@ class GlyphBot(discord.Client):
         if self.config.getboolean("modlog", "leaves"):
             await self.audit.log(member.server, auditing.MEMBER_LEAVE,
                                  "{} left the server.".format(member.mention), user=member)
-        # TODO: Find a way to send people invites when they aren't on a server with the bot
-        invite = self.create_invite(member.server).url
-        await self.safe_send_message(member, "Did you leave {} by accident? Here's a reinvite: {}".format(member.server,
-                                                                                                          invite))
+        # invite = self.create_invite(member.server).url
+        # await self.safe_send_message(member, "Did you leave {} by accident?
+        #                                       Here's a reinvite: {}".format(member.server, invite))
 
     async def on_reaction_add(self, reaction, user):
         if self.config.getboolean("modlog", "reactions"):
