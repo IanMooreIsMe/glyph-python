@@ -199,7 +199,8 @@ class GlyphBot(discord.Client):
                     submission = self.reddit.subreddit(multireddit).random()
                 except TypeError:
                     continue
-                if any(extension in submission.url for extension in [".png", ".jpg", ".jpeg", ".gif"]):
+                if any(extension in submission.url for extension in [".png", ".jpg", ".jpeg", ".gif"]) \
+                        and submission.score > self.config.getint("Reddit", "score_threshold"):
                     break
             embed = discord.Embed(title=submission.title, url=submission.shortlink)
             embed.set_image(url=submission.url)
