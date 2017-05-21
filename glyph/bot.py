@@ -327,8 +327,9 @@ class GlyphBot(discord.Client):
                     title="Welcome to {}!".format(server.name),
                     description=text,
                     colour=0x4286F4)
-                await self.safe_send_message(channel, "Welcome {}!".format(member.mention))
-                await self.safe_send_message(member, embed=welcome_embed)
+                welcomed = await self.safe_send_message(channel, "Welcome {}!".format(member.mention))
+                if welcomed:
+                    await self.safe_send_message(member, embed=welcome_embed)
 
     async def on_member_remove(self, member):
         if self.config.getboolean("modlog", "leaves"):
