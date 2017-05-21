@@ -320,15 +320,15 @@ class GlyphBot(discord.Client):
             await self.audit.log(member.server, auditing.MEMBER_JOIN,
                                  "{} joined the server.".format(member.mention), user=member)  # Mod log
         server = member.server
-        text = self.get_config_message("welcome", member, server)
-        welcome_embed = discord.Embed(
-            title="Welcome to {}!".format(server.name),
-            description=text,
-            colour=0x4286F4)
-        await self.safe_send_message(member, embed=welcome_embed)
         for channel in server.channels:
             if channel.is_default:
+                text = self.get_config_message("welcome", member, server)
+                welcome_embed = discord.Embed(
+                    title="Welcome to {}!".format(server.name),
+                    description=text,
+                    colour=0x4286F4)
                 await self.safe_send_message(channel, "Welcome {}!".format(member.mention))
+                await self.safe_send_message(member, embed=welcome_embed)
 
     async def on_member_remove(self, member):
         if self.config.getboolean("modlog", "leaves"):
