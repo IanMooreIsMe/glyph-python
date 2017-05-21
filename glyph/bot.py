@@ -276,7 +276,8 @@ class GlyphBot(discord.Client):
                 except ValueError:
                     pass
         # Check if the message should be replied to
-        if (self.user in message.mentions) or (message.channel.type is discord.ChannelType.private):
+        if (self.user in message.mentions or message.channel.type is discord.ChannelType.private) \
+                and message.clean_content:  # Mae sure message isn't empty
             await self.send_typing(message.channel)
             clean_message = re.sub("@{}".format(self.user.display_name), "", message.clean_content)
 
@@ -374,6 +375,11 @@ class GlyphBot(discord.Client):
                                                                          reaction.emoji, reaction.message.content),
                                  user=user)
 
+    async def on_server_join(self, server):
+        log.info("{}: Added to server.".format(server))
+
+    async def on_server_remove(self, server):
+        log.info("{}: Removed from server.".format(server))
 
 if __name__ == '__main__':
     bot = GlyphBot()
