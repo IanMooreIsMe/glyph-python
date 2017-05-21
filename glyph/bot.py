@@ -64,9 +64,9 @@ class GlyphBot(discord.Client):
                 await asyncio.sleep(expire_time)
                 await self.delete_message(msg)
         except discord.Forbidden:
-            log.warning("{}: Cannot send message, no permission".format(destination.name))
+            log.warning("{} - {}: Cannot send message, no permission".format(destination.server, destination.name))
         except discord.NotFound:
-            log.warning("{}: Cannot send message, invalid channel?".format(destination.name))
+            log.warning("{} - {}: Cannot send message, invalid channel?".format(destination.server, destination.name))
 
         return msg
 
