@@ -55,7 +55,7 @@ class GlyphBot(discord.Client):
             log.error("Send typing needs a destination!")
             return None
         try:
-            self.safe_send_typing(destination)
+            await self.safe_send_typing(destination)
         except discord.Forbidden:
             log.warning("{} - {}: Cannot send typing, no permission?".format(destination.server, destination.name))
         except discord.NotFound:
