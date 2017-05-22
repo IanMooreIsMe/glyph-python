@@ -50,6 +50,17 @@ class GlyphBot(discord.Client):
             text = text.replace("{SERVER}", server)
         return text
 
+    async def safe_send_typing(self, destination):
+        if destination is None:
+            log.error("Send typing needs a destination!")
+            return None
+        try:
+            self.safe_send_typing(destination)
+        except discord.Forbidden:
+            log.warning("{} - {}: Cannot send typing, no permission?".format(destination.server, destination.name))
+        except discord.NotFound:
+            log.warning("{} - {}: Cannot send typing, invalid channel?".format(destination.server, destination.name))
+
     async def safe_send_message(self, destination, content=None, *, embed=None, expire_time=0, removable=False):
         if content is None and embed is None:
             log.error("A message needs to have content!")
@@ -64,7 +75,7 @@ class GlyphBot(discord.Client):
                 await asyncio.sleep(expire_time)
                 await self.delete_message(msg)
         except discord.Forbidden:
-            log.warning("{} - {}: Cannot send message, no permission".format(destination.server, destination.name))
+            log.warning("{} - {}: Cannot send message, no permission?".format(destination.server, destination.name))
         except discord.NotFound:
             log.warning("{} - {}: Cannot send message, invalid channel?".format(destination.server, destination.name))
 
@@ -95,7 +106,7 @@ class GlyphBot(discord.Client):
         try:
             return await self.delete_message(message)
         except discord.Forbidden:
-            log.warning("Cannot delete message \"{}\", no permission".format(message.clean_content))
+            log.warning("Cannot delete message \"{}\", no permission?".format(message.clean_content))
         except discord.NotFound:
             log.warning("Cannot delete message \"{}\", invalid channel?".format(message.clean_content))
 
@@ -145,7 +156,7 @@ class GlyphBot(discord.Client):
         if wit is not None:  # Get all the values needed to assign people roles
             try:
                 for user in message.server.members:
-                    if user.name in wit["entities"]["user"][0]["value"]:  # TODO: Allow non-mentions
+                    if user.name in wit["entities"]["user"][0]["value"]:
                         target_user = user
                         break
                 else:
@@ -278,7 +289,7 @@ class GlyphBot(discord.Client):
         # Check if the message should be replied to
         if (self.user in message.mentions or message.channel.type is discord.ChannelType.private) \
                 and message.clean_content:  # Mae sure message isn't empty
-            await self.send_typing(message.channel)
+            await self.safe_send_typing(message.channel)
             clean_message = re.sub("@{}".format(self.user.display_name), "", message.clean_content)
 
             wit = None
