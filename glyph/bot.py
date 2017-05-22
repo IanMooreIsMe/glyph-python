@@ -316,12 +316,12 @@ class GlyphBot(discord.Client):
                 await self.safe_send_message(message.channel, response)
 
     async def on_member_join(self, member):
+        server = member.server
+        if server.id in self.config.get("ignore", "servers").split(","):  # Ignore servers
+            return
         if self.config.getboolean("modlog", "joins"):
             await self.audit.log(member.server, auditing.MEMBER_JOIN,
                                  "{} joined the server.".format(member.mention), user=member)  # Mod log
-        server = member.server
-        if server.id == "110373943822540800":  # Don't send welcome messages in Discord Bots server
-            return
         for channel in server.channels:
             if channel.is_default:
                 welcomed = await self.safe_send_message(channel, "Welcome {}!".format(member.mention))
@@ -334,6 +334,9 @@ class GlyphBot(discord.Client):
                     await self.safe_send_message(member, embed=welcome_embed)
 
     async def on_member_remove(self, member):
+        server = member.server
+        if server.id in self.config.get("ignore", "servers").split(","):  # Ignore servers
+            return
         if self.config.getboolean("modlog", "leaves"):
             await self.audit.log(member.server, auditing.MEMBER_LEAVE,
                                  "{} left the server.".format(member.mention), user=member)
