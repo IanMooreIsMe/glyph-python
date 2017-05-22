@@ -214,13 +214,13 @@ class GlyphBot(discord.Client):
             await self.safe_send_message(message.channel, "Sorry, I had an issue communicating with Reddit.")
 
     async def cmd_help(self, message):
-        if message.channel.type is not discord.ChannelType.private:
-            await self.safe_send_message(message.channel, "Sending you a PM now.", expire_time=5)
         help_embed = discord.Embed(
             title="Glyph Help",
             description=self.get_config_message("help", message.author, message.server),
             colour=0x4286F4)
         await self.safe_send_message(message.author, embed=help_embed)
+        if message.channel.type is not discord.ChannelType.private:
+            await self.safe_send_message(message.channel, "Sending you a PM now.", expire_time=5)
 
     async def on_ready(self):
         log.info("Logged in as {} ({})".format(self.user.name, self.user.id))
