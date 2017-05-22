@@ -244,11 +244,11 @@ class GlyphBot(discord.Client):
         if message.author == self.user:
             return
         # Check for spoilery words
-        spoilers_channel = self.config.get("spoilers", "channel")
-        spoilers_keywords = self.config.get("spoilers", "keywords").split(",")
-        if any(word in message.clean_content.lower() for word in spoilers_keywords) and not (
-                    message.channel.name == spoilers_channel):
-            await self.add_reaction(message, "\u26A0")
+        # spoilers_channel = self.config.get("spoilers", "channel")
+        # spoilers_keywords = self.config.get("spoilers", "keywords").split(",")
+        # if any(word in message.clean_content.lower() for word in spoilers_keywords) and not (
+        #            message.channel.name == spoilers_channel):
+        #    await self.add_reaction(message, "\u26A0")
         # FA QuickView
         r = fa.Submission.regex
         if r.search(message.clean_content) and self.config.getboolean("FA QuickView", "enabled"):
