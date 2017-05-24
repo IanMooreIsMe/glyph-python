@@ -1,18 +1,18 @@
 import asyncio
 import configparser
-import re
-from os import environ
 import logging
 import random
+import re
+from os import environ
 
 import discord
 import praw
 import wikia
-
 from wit import Wit
+
+from . import auditing
 from . import fa
 from . import picarto
-from . import auditing
 from .countdown import Countdown
 
 log = logging.getLogger(__name__)
@@ -251,8 +251,8 @@ class GlyphBot(discord.Client):
                 log.info(await countdown.update())
 
     async def on_message(self, message):
-        # Don't talk to yourself
-        if message.author == self.user:
+        # Don't talk to yourself or other bots
+        if message.author == self.user or message.author.bot:
             return
         # Check for spoilery words
         # spoilers_channel = self.config.get("spoilers", "channel")
