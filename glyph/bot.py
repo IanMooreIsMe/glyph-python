@@ -7,6 +7,7 @@ from os import environ
 
 import discord
 import praw
+import requests
 import wikia
 from wit import Wit
 
@@ -33,6 +34,15 @@ class GlyphBot(discord.Client):
                                   client_secret=environ.get("REDDIT_SECRET"),
                                   user_agent=environ.get("REDDIT_USER_AGENT"))
         super().__init__()
+
+    def update_server_count(self):
+        count = len(self.servers)
+        url = "https://discordbots.org/api/bots/{}/stats".format(self.user.id)
+        header = {'Authorization': environ.get("DISCORDBOTLIST_TOKEN")}
+        data = {'server_count': count}
+        req = requests.post(url, data=data, headers=header)
+        print(req)
+        log.info("Updated count with {} servers!".format(count))
 
     def get_config_message(self, file, user, server):
         if isinstance(user, discord.User):
@@ -155,6 +165,8 @@ class GlyphBot(discord.Client):
             return
         if wit is not None:  # Get all the values needed to assign people roles
             try:
+                # TODO: Finish rewriting for loops with discord.utils equivalents
+                target_user = discord.utils.get(message.server.members, name=wit["entities"]["user"][0]["value"])
                 for user in message.server.members:
                     if user.name in wit["entities"]["user"][0]["value"]:
                         target_user = user
@@ -236,6 +248,7 @@ class GlyphBot(discord.Client):
     async def on_ready(self):
         log.info("Logged in as {} ({})".format(self.user.name, self.user.id))
         await self.change_presence(game=discord.Game(name=self.config.get("discord", "game")))
+        self.update_server_count()
         for server in self.servers:
             log.info("{}: Connected to server.".format(server))
             if self.config.getboolean("countdown", "enabled"):
@@ -251,7 +264,7 @@ class GlyphBot(discord.Client):
                 log.info(await countdown.update())
 
     async def on_message(self, message):
-        # Don't talk to yourself or other bots
+        # Don't talk to yourself
         if message.author == self.user or message.author.bot:
             return
         # Check for spoilery words
@@ -333,16 +346,14 @@ class GlyphBot(discord.Client):
         if self.config.getboolean("modlog", "joins"):
             await self.audit.log(member.server, auditing.MEMBER_JOIN,
                                  "{} joined the server.".format(member.mention), user=member)  # Mod log
-        for channel in server.channels:
-            if channel.is_default:
-                welcomed = await self.safe_send_message(channel, "Welcome {}!".format(member.mention))
-                if welcomed:
-                    text = self.get_config_message("welcome", member, server)
-                    welcome_embed = discord.Embed(
-                        title="Welcome to {}!".format(server.name),
-                        description=text,
-                        colour=0x4286F4)
-                    await self.safe_send_message(member, embed=welcome_embed)
+        welcomed = await self.safe_send_message(server.default_channel, "Welcome {}!".format(member.mention))
+        if welcomed:
+            text = self.get_config_message("welcome", member, server)
+            welcome_embed = discord.Embed(
+                title="Welcome to {}!".format(server.name),
+                description=text,
+                colour=0x4286F4)
+            await self.safe_send_message(member, embed=welcome_embed)
 
     async def on_member_remove(self, member):
         server = member.server
