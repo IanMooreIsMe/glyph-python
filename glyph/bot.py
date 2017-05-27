@@ -41,8 +41,10 @@ class GlyphBot(discord.Client):
         header = {'Authorization': environ.get("DISCORDBOTLIST_TOKEN")}
         data = {'server_count': count}
         req = requests.post(url, data=data, headers=header)
-        print(req)
-        log.info("Updated count with {} servers!".format(count))
+        if req.status_code == 200:
+            log.info("Updated count with {} servers!".format(count))
+        else:
+            log.warning("Failed to update server count with error code {}!".format(req.status_code))
 
     def get_config_message(self, file, user, server):
         if isinstance(user, discord.User):
