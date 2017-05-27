@@ -407,9 +407,11 @@ class GlyphBot(discord.Client):
 
     async def on_server_join(self, server):
         log.info("{}: Added to server.".format(server))
+        self.update_server_count()
 
     async def on_server_remove(self, server):
         log.info("{}: Removed from server.".format(server))
+        self.update_server_count()
 
 if __name__ == '__main__':
     bot = GlyphBot()
