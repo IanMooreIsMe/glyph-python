@@ -37,14 +37,24 @@ class GlyphBot(discord.Client):
 
     def update_server_count(self):
         count = len(self.servers)
+        # Discord Bot List
         url = "https://discordbots.org/api/bots/{}/stats".format(self.user.id)
         header = {'Authorization': environ.get("DISCORDBOTLIST_TOKEN")}
         data = {'server_count': count}
         req = requests.post(url, data=data, headers=header)
         if req.status_code == 200:
-            log.info("Updated count with {} servers!".format(count))
+            log.info("Updated Discord Bot List count with {} servers!".format(count))
         else:
-            log.warning("Failed to update server count with error code {}!".format(req.status_code))
+            log.warning("Failed to update Discord Bot List server count with error code {}!".format(req.status_code))
+        # Discord bots
+        url = "https://bots.discord.pw/api/bots/{}/stats".format(self.user.id)
+        header = {'Authorization': environ.get("DISCORDBOTS_TOKEN")}
+        data = {'server_count': count}
+        req = requests.post(url, data=data, headers=header)
+        if req.status_code == 200:
+            log.info("Updated Discord Bots count with {} servers!".format(count))
+        else:
+            log.warning("Failed to update Discord Bots server count with error code {}!".format(req.status_code))
 
     def get_config_message(self, file, user, server):
         if isinstance(user, discord.User):
@@ -306,6 +316,13 @@ class GlyphBot(discord.Client):
                 and message.clean_content:  # Mae sure message isn't empty
             await self.safe_send_typing(message.channel)
             clean_message = re.sub("@{}".format(self.user.display_name), "", message.clean_content)
+            # print(detect_langs(clean_message))
+            # print(len(clean_message))
+            # lang = detect(clean_message)
+            # if len(clean_message) > 10 and lang != "en":  # TODO: Address non English messages
+            #     await self.safe_send_message(message.channel,
+            #                                  "Sorry, I only speak English right now, not {}.".format(lang))
+            #     return
 
             wit = None
             command = None
