@@ -39,17 +39,17 @@ class GlyphBot(discord.Client):
         count = len(self.servers)
         # Discord Bot List
         url = "https://discordbots.org/api/bots/{}/stats".format(self.user.id)
-        header = {'Authorization': environ.get("DISCORDBOTLIST_TOKEN")}
-        data = {'server_count': count}
+        header = {"Authorization": environ.get("DISCORDBOTLIST_TOKEN")}
+        data = {"server_count": count}
         req = requests.post(url, data=data, headers=header)
         if req.status_code == 200:
             log.info("Updated Discord Bot List count with {} servers!".format(count))
         else:
             log.warning("Failed to update Discord Bot List server count with error code {}!".format(req.status_code))
-        # Discord bots
+        # Discord Bots
         url = "https://bots.discord.pw/api/bots/{}/stats".format(self.user.id)
-        header = {'Authorization': environ.get("DISCORDBOTS_TOKEN")}
-        data = {'server_count': count}
+        header = {"Content-Type": "application/json", "Authorization": environ.get("DISCORDBOTS_TOKEN")}
+        data = {"server_count": count}
         req = requests.post(url, data=data, headers=header)
         if req.status_code == 200:
             log.info("Updated Discord Bots count with {} servers!".format(count))
