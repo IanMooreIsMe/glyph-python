@@ -3,6 +3,7 @@ import configparser
 import logging
 import random
 import re
+from datetime import datetime
 from os import environ
 
 import discord
@@ -225,6 +226,13 @@ class GlyphBot(discord.Client):
         role_change_embed.set_thumbnail(url=target_user.avatar_url)
         await self.safe_send_message(message.channel, "", embed=role_change_embed)
 
+    async def cmd_status(self, message):
+        start = datetime.now().microsecond
+        msg = await self.safe_send_message(message.channel,
+                                           ":ok_hand: ? ms ping in {} servers!".format(len(self.servers)))
+        diff = int((datetime.now().microsecond - start)/1000)
+        await self.safe_edit_message(msg, ":ok_hand: {} ms ping in {} servers!".format(diff, len(self.servers)))
+
     async def cmd_reddit(self, message, wit, *, multireddit=None):
         if wit is not None:
             try:
@@ -247,6 +255,7 @@ class GlyphBot(discord.Client):
             await self.safe_send_message(message.channel, embed=embed, removable=True)
         except praw.exceptions.ClientException:
             await self.safe_send_message(message.channel, "Sorry, I had an issue communicating with Reddit.")
+
 
     async def cmd_help(self, message):
         help_embed = discord.Embed(
@@ -339,7 +348,7 @@ class GlyphBot(discord.Client):
             elif command == "role":
                 await self.cmd_change_role(message, wit)
             elif command == "status":
-                await self.safe_send_message(message.channel, ":ok_hand:")
+                await self.cmd_status(message)
             elif command == "reddit":
                 await self.cmd_reddit(message, wit)
             else:
