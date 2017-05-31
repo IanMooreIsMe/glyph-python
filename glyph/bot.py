@@ -34,6 +34,8 @@ class GlyphBot(discord.Client):
         self.reddit = praw.Reddit(client_id=environ.get("REDDIT_CLIENT_ID"),
                                   client_secret=environ.get("REDDIT_SECRET"),
                                   user_agent=environ.get("REDDIT_USER_AGENT"))
+        self.spoiler_warning_cooldown = datetime.now().second  # TODO: Make more multiserver friendly
+        self.spoiler_recent_warnings = 0
         super().__init__()
 
     def update_server_count(self):
@@ -289,11 +291,21 @@ class GlyphBot(discord.Client):
         if message.author == self.user or message.author.bot:
             return
         # Check for spoilery words
-        # spoilers_channel = self.config.get("spoilers", "channel")
-        # spoilers_keywords = self.config.get("spoilers", "keywords").split(",")
-        # if any(word in message.clean_content.lower() for word in spoilers_keywords) and not (
-        #            message.channel.name == spoilers_channel):
-        #    await self.add_reaction(message, "\u26A0")
+        spoilers_channel = self.config.get("spoilers", "channel")
+        spoilers_keywords = self.config.get("spoilers", "keywords").split(",")
+        spoilers_servers = self.config.get("spoilers", "servers").split(",")
+        if any(word in message.clean_content.lower() for word in spoilers_keywords) \
+                and not (message.channel.name == spoilers_channel) \
+                and (message.server.id in spoilers_servers):
+            await self.add_reaction(message, "\u26A0")  # React with a warning emoji
+            self.spoiler_recent_warnings += 1
+            if datetime.now().second > self.spoiler_warning_cooldown and self.spoiler_recent_warnings > 2:
+                await self.safe_send_message(message.channel,
+                                             "Excuse me {}\n"
+                                             "Keep any and all Andromeda discussion in #ark, "
+                                             "no exceptions.".format(message.author.mention))
+                self.spoiler_recent_warnings = 0
+                self.spoiler_warning_cooldown = datetime.now().second + 60
         # FA QuickView
         r = fa.Submission.regex
         if r.search(message.clean_content) and self.config.getboolean("FA QuickView", "enabled"):
