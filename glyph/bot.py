@@ -299,13 +299,34 @@ class GlyphBot(discord.Client):
                 and (message.server.id in spoilers_servers):
             await self.add_reaction(message, "\u26A0")  # React with a warning emoji
             self.spoiler_recent_warnings += 1
-            if datetime.now().second > self.spoiler_warning_cooldown and self.spoiler_recent_warnings > 2:
-                await self.safe_send_message(message.channel,
-                                             "Excuse me {}\n"
-                                             "Keep any and all Andromeda discussion in #ark, "
-                                             "no exceptions.".format(message.author.mention))
+            if datetime.now().second > self.spoiler_warning_cooldown:
                 self.spoiler_recent_warnings = 0
-                self.spoiler_warning_cooldown = datetime.now().second + 60
+            if self.spoiler_recent_warnings == 3:
+                await self.safe_send_message(message.channel,
+                                             "Excuse me {},\n"
+                                             "Keep any and all Andromeda discussion in #{}, "
+                                             "no exceptions.".format(message.author.mention, spoilers_channel))
+            elif self.spoiler_recent_warnings == 5:
+                await self.safe_send_message(message.channel,
+                                             "Well excuse me your highness {}, "
+                                             "but it appears you are incapable of seeing these fancy spoiler warnings. "
+                                             "Perhaps you'd like to continue tea time in a chat "
+                                             "more suited for spoilers, like, I don't know, #{}? "
+                                             "Okay, got it?".format(message.author.mention, spoilers_channel))
+            elif self.spoiler_recent_warnings == 7:
+                await self.safe_send_message(message.channel,
+                                             "Oh my bejesus {}, are you not even listening anymore? "
+                                             "Your spoilers that you seem to love to keep posting belong only in #{}!"
+                                             "Not here in #{}! How many times do I have to tell you!"
+                                             "Oh my freaking god! Do you know how inconsiderate you are being to"
+                                             "everyone here, not everyone has finished the game you know, you"
+                                             "special little snowflake! If you keep this up I will report you, "
+                                             "straight to Santa's naughty list. "
+                                             "Okay?".format(message.author.mention, spoilers_channel, message.channel))
+            elif self.spoiler_recent_warnings == 9:
+                await self.safe_send_message(message.channel,
+                                             "... Really {}? Again?".format(message.author.mention))
+            self.spoiler_warning_cooldown = datetime.now().second + 60
         # FA QuickView
         r = fa.Submission.regex
         if r.search(message.clean_content) and self.config.getboolean("FA QuickView", "enabled"):
