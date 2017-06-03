@@ -322,7 +322,7 @@ class GlyphBot(discord.Client):
         # Check for spoilery words
         spoilers_channel = self.config.get("spoilers", "channel")
         spoilers_keywords = self.config.get("spoilers", "keywords").split(",")
-        spoilers_servers = self.config.get("spoilers", "servers").split(",")
+        spoilers_servers = self.config.get("servers", "special").split(",")
         if any(word in message.clean_content.lower() for word in spoilers_keywords) \
                 and not (message.channel.name == spoilers_channel) \
                 and (message.server.id in spoilers_servers):
