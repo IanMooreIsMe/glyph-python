@@ -135,6 +135,16 @@ class GlyphBot(discord.Client):
         except discord.NotFound:
             log.warning("Cannot delete message \"{}\", invalid channel?".format(message.clean_content))
 
+    async def safe_kick(self, member):
+        kick = None
+        try:
+            kick = await self.kick(member)
+        except discord.Forbidden:
+            log.warning("{}: Cannot kick member, no permission?".format(member.server))
+        except discord.HTTPException:
+            log.warning("{}: Cannot kick member, kicking failed?".format(member.server))
+        return kick
+
     async def safe_add_roles(self, member, *roles):
         try:
             return await self.add_roles(member, *roles)
@@ -258,7 +268,6 @@ class GlyphBot(discord.Client):
         except praw.exceptions.ClientException:
             await self.safe_send_message(message.channel, "Sorry, I had an issue communicating with Reddit.")
 
-
     async def cmd_help(self, message):
         help_embed = discord.Embed(
             title="Glyph Help",
@@ -267,6 +276,26 @@ class GlyphBot(discord.Client):
         await self.safe_send_message(message.author, embed=help_embed)
         if message.channel.type is not discord.ChannelType.private:
             await self.safe_send_message(message.channel, "Sending you a PM now.", expire_time=5)
+
+    async def cmd_kick(self, message, wit, *, member=None):
+        if message.channel.is_private:
+            await self.safe_send_message(message.channel, "You have to be in a server to kick someone.")
+            return
+        elif not message.author.server_permissions.kick_members:
+            await self.safe_send_message(message.channel, "You don't have permission to do kick people.")
+            return
+        # Get the user
+        if member is None:
+            try:
+                member = discord.utils.get(message.server.members, name=wit["entities"]["user"][0]["value"])
+            except KeyError:
+                await self.safe_send_message(message.channel, "Sorry, I couldn't find a user to kick.")
+                return
+        # Kick the user
+        kick = await self.safe_kick(member)
+        if kick:
+            await self.safe_send_message(message.channel, ":ok_hand: ***{} has been kicked!***".format(member.mention))
+
 
     async def on_ready(self):
         log.info("Logged in as {} ({})".format(self.user.name, self.user.id))
@@ -384,6 +413,8 @@ class GlyphBot(discord.Client):
                 await self.cmd_status(message)
             elif command == "reddit":
                 await self.cmd_reddit(message, wit)
+            elif command == "kick":
+                await self.cmd_kick(message, wit)
             else:
                 response = "I feel like I should know what to say, but haven't learned yet, try asking me again later."
                 if wit is not None:
@@ -402,23 +433,24 @@ class GlyphBot(discord.Client):
 
     async def on_member_join(self, member):
         server = member.server
-        if server.id in self.config.get("ignore", "servers").split(","):  # Ignore servers
+        if server.id in self.config.get("servers", "ignore").split(","):  # Ignore servers
             return
         if self.config.getboolean("modlog", "joins"):
             await self.audit.log(member.server, auditing.MEMBER_JOIN,
                                  "{} joined the server.".format(member.mention), user=member)  # Mod log
-        welcomed = await self.safe_send_message(server.default_channel, "Welcome {}!".format(member.mention))
-        if welcomed:
-            text = self.get_config_message("welcome", member, server)
-            welcome_embed = discord.Embed(
-                title="Welcome to {}!".format(server.name),
-                description=text,
-                colour=0x4286F4)
-            await self.safe_send_message(member, embed=welcome_embed)
+        if server.id in self.config.get("servers", "special").split(","):
+            await self.safe_send_message(server.default_channel, "Welcome {}!".format(member.mention))
+        # if welcomed:
+        #     text = self.get_config_message("welcome", member, server)
+        #     welcome_embed = discord.Embed(
+        #         title="Welcome to {}!".format(server.name),
+        #         description=text,
+        #         colour=0x4286F4)
+        #     await self.safe_send_message(member, embed=welcome_embed)
 
     async def on_member_remove(self, member):
         server = member.server
-        if server.id in self.config.get("ignore", "servers").split(","):  # Ignore servers
+        if server.id in self.config.get("servers", "ignore").split(","):  # Ignore servers
             return
         if self.config.getboolean("modlog", "leaves"):
             await self.audit.log(member.server, auditing.MEMBER_LEAVE,
