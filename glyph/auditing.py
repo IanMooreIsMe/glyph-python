@@ -34,7 +34,15 @@ class Auditor(object):
             raise ValueError("type must be an instance of class auditing.AuditType")
         config = serverconfig.Config(server)  # TODO: Use dictionary
         log_channel = discord.utils.get(server.channels, name=config.get("auditing", "channel"))
-        embed = discord.Embed(description=message, color=audit_type.color, timestamp=datetime.now())
-        if user is not None:
-            embed.set_author(name=audit_type.title, icon_url=user.avatar_url)
-        await self.bot.safe_send_message(log_channel, embed=embed)
+        if log_channel is not None:
+            embed = discord.Embed(description=message, color=audit_type.color, timestamp=datetime.now())
+            if user is not None:
+                embed.set_author(name=audit_type.title, icon_url=user.avatar_url)
+            await self.bot.safe_send_message(log_channel, embed=embed)
+        else:
+            glyph_channel = discord.utils.get(server.channels, name="glyph")
+            if glyph_channel is not None:
+                await self.bot.safe_send_message(glyph_channel,
+                                                 "**Config Error**\n```"
+                                                 "Auditing channel '{}' not found!```".format(config.get("auditing",
+                                                                                                         "channel")))

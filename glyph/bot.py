@@ -382,7 +382,7 @@ class GlyphBot(discord.Client):
         config = self.configs.get(server)
         if config.getboolean("auditing", "joins"):
             await self.auditor.audit(server, auditing.MEMBER_JOIN,
-                                 "{} joined the server.".format(member.mention), user=member)
+                                     "{} joined the server.".format(member.mention), user=member)
         if config.getboolean("welcome", "announce_in_server"):
             await self.safe_send_message(server.default_channel, "Welcome {}!".format(member.mention))
         # if welcomed:
