@@ -1,5 +1,8 @@
+from _datetime import datetime
+
 import discord
-import time
+
+from . import serverconfig
 
 
 class AuditType(object):
@@ -17,23 +20,21 @@ REACTION_REMOVE = AuditType("Reaction Removed", 0xBA3737)
 STATUS = AuditType("Bot Status", 0x929392)
 
 
-class Logger(object):
+class Auditor(object):
 
     def __init__(self, client):
         if not isinstance(client, discord.Client):
             raise ValueError("client must be an instance of class discord.Client")
         self.bot = client
 
-    async def log(self, server, audit, message, *, user):
-        log_channel = "log"
+    async def audit(self, server, audit_type, message, *, user):
         if not isinstance(server, discord.Server):
             raise ValueError("server must be an instance of class discord.Server")
-        if not isinstance(audit, AuditType):
-            raise ValueError("type must be an instance of class modlogger.Type")
-        for channel in server.channels:
-            if channel.name == log_channel:
-                embed = discord.Embed(description=message, color=audit.color)
-                embed.set_footer(text=time.strftime("On %Y-%m-%d at %H:%M:%S"))
-                if user is not None:
-                    embed.set_author(name=audit.title, icon_url=user.avatar_url)
-                await self.bot.safe_send_message(channel, embed=embed)
+        if not isinstance(audit_type, AuditType):
+            raise ValueError("type must be an instance of class auditing.AuditType")
+        config = serverconfig.Config(server)  # TODO: Use dictionary
+        log_channel = discord.utils.get(server.channels, name=config.get("auditing", "channel"))
+        embed = discord.Embed(description=message, color=audit_type.color, timestamp=datetime.now())
+        if user is not None:
+            embed.set_author(name=audit_type.title, icon_url=user.avatar_url)
+        await self.bot.safe_send_message(log_channel, embed=embed)

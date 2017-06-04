@@ -4,4 +4,3 @@ wit
 praw==4.5.1
 wikia==1.4.3
 pillow
-langdetect

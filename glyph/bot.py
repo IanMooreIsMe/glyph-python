@@ -1,5 +1,4 @@
 import asyncio
-import configparser
 import logging
 import random
 import re
@@ -15,7 +14,7 @@ from wit import Wit
 from . import auditing
 from . import fa
 from . import picarto
-from .countdown import Countdown
+from . import serverconfig
 
 log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
@@ -27,15 +26,12 @@ log.addHandler(ch)
 class GlyphBot(discord.Client):
 
     def __init__(self):
-        self.audit = auditing.Logger(self)
-        self.config = configparser.ConfigParser()
-        self.config.read("./config/config.ini")
+        self.auditor = auditing.Auditor(self)
         self.wit = Wit(access_token=environ.get("WIT_TOKEN"))
+        self.configs = {None: serverconfig.Config()}  # Set up for DMs
         self.reddit = praw.Reddit(client_id=environ.get("REDDIT_CLIENT_ID"),
                                   client_secret=environ.get("REDDIT_SECRET"),
                                   user_agent=environ.get("REDDIT_USER_AGENT"))
-        self.spoiler_warning_cooldown = datetime.now().second  # TODO: Make more multiserver friendly
-        self.spoiler_recent_warnings = 0
         super().__init__()
 
     def update_server_count(self):
@@ -59,7 +55,7 @@ class GlyphBot(discord.Client):
         else:
             log.warning("Failed to update Discord Bots server count with error code {}!".format(req.status_code))
 
-    def get_config_message(self, file, user, server):
+    def get_config_message(self, file, user=None, server=None):
         if isinstance(user, discord.User):
             user = user.name
         else:
@@ -158,12 +154,11 @@ class GlyphBot(discord.Client):
             log.warning("Cannot remove roles, no permission?")
 
     async def cmd_wiki(self, message, wit, *, wiki=None, query=None):
+        server = message.server
+        if wiki is None:
+            config = self.configs.get(server)
+            wiki = config.get("wiki", "wiki")
         if wit is not None:
-            try:
-                wiki = wit["entities"]["command"][0]["metadata"]
-            except KeyError:
-                await self.safe_send_message(message.channel, "Sorry, wiki search is not correctly set up.")
-                return
             try:
                 query = wit["entities"]["wikipedia_search_query"][0]["value"]
             except KeyError:
@@ -192,11 +187,7 @@ class GlyphBot(discord.Client):
             try:
                 # TODO: Finish rewriting for loops with discord.utils equivalents
                 target_user = discord.utils.get(message.server.members, name=wit["entities"]["user"][0]["value"])
-                for user in message.server.members:
-                    if user.name in wit["entities"]["user"][0]["value"]:
-                        target_user = user
-                        break
-                else:
+                if target_user is None:
                     await self.safe_send_message(message.channel,
                                                  "Sorry, I can't seem to find {} in this server.".format(
                                                      wit["entities"]["user"][0]["value"]))
@@ -260,7 +251,7 @@ class GlyphBot(discord.Client):
                 except TypeError:
                     continue
                 if any(extension in submission.url for extension in [".png", ".jpg", ".jpeg", ".gif"]) \
-                        and submission.score > self.config.getint("Reddit", "score_threshold"):
+                        and submission.score > 10:
                     break
             embed = discord.Embed(title=submission.title, url=submission.shortlink)
             embed.set_image(url=submission.url)
@@ -296,69 +287,31 @@ class GlyphBot(discord.Client):
         if kick:
             await self.safe_send_message(message.channel, ":ok_hand: ***{} has been kicked!***".format(member.mention))
 
-
     async def on_ready(self):
         log.info("Logged in as {} ({})".format(self.user.name, self.user.id))
-        await self.change_presence(game=discord.Game(name=self.config.get("discord", "game")))
+        await self.change_presence(game=discord.Game(name="Armax Arsenal Arena"))
         self.update_server_count()
         for server in self.servers:
+            self.configs.update({server: serverconfig.Config(server)})
             log.info("{}: Connected to server.".format(server))
-            if self.config.getboolean("countdown", "enabled"):
-                date = self.config.get("countdown", "date")
-                icon = self.config.get("countdown", "icon")
-                font = self.config.get("countdown", "font")
-                size = self.config.getint("countdown", "size")
-                color = self.config.get("countdown", "color")
-                suffix = self.config.get("countdown", "suffix")
-                prefix = self.config.get("countdown", "prefix")
-
-                countdown = Countdown(self, server, date, icon, font, size, color, suffix, prefix)
-                log.info(await countdown.update())
 
     async def on_message(self, message):
         # Don't talk to yourself
         if message.author == self.user or message.author.bot:
             return
+        server = message.server
+        config = self.configs.get(server)
+
         # Check for spoilery words
-        spoilers_channel = self.config.get("spoilers", "channel")
-        spoilers_keywords = self.config.get("spoilers", "keywords").split(",")
-        spoilers_servers = self.config.get("servers", "special").split(",")
-        if any(word in message.clean_content.lower() for word in spoilers_keywords) \
-                and not (message.channel.name == spoilers_channel) \
-                and (message.server.id in spoilers_servers):
-            await self.add_reaction(message, "\u26A0")  # React with a warning emoji
-            self.spoiler_recent_warnings += 1
-            if datetime.now().second > self.spoiler_warning_cooldown:
-                self.spoiler_recent_warnings = 0
-            if self.spoiler_recent_warnings == 3:
-                await self.safe_send_message(message.channel,
-                                             "Excuse me {},\n"
-                                             "Keep any and all Andromeda discussion in #{}, "
-                                             "no exceptions.".format(message.author.mention, spoilers_channel))
-            elif self.spoiler_recent_warnings == 5:
-                await self.safe_send_message(message.channel,
-                                             "Well excuse me your highness {}, "
-                                             "but it appears you are incapable of seeing these fancy spoiler warnings. "
-                                             "Perhaps you'd like to continue tea time in a chat "
-                                             "more suited for spoilers, like, I don't know, #{}? "
-                                             "Okay, got it?".format(message.author.mention, spoilers_channel))
-            elif self.spoiler_recent_warnings == 7:
-                await self.safe_send_message(message.channel,
-                                             "Oh my bejesus {}, are you not even listening anymore? "
-                                             "Your spoilers that you seem to love to keep posting belong only in #{}!"
-                                             "Not here in #{}! How many times do I have to tell you!"
-                                             "Oh my freaking god! Do you know how inconsiderate you are being to"
-                                             "everyone here, not everyone has finished the game you know, you"
-                                             "special little snowflake! If you keep this up I will report you, "
-                                             "straight to Santa's naughty list. "
-                                             "Okay?".format(message.author.mention, spoilers_channel, message.channel))
-            elif self.spoiler_recent_warnings == 9:
-                await self.safe_send_message(message.channel,
-                                             "... Really {}? Again?".format(message.author.mention))
-            self.spoiler_warning_cooldown = datetime.now().second + 60
+        if config.getboolean("spoilers", "enabled"):
+            spoilers_channel = config.get("spoilers", "channel")
+            spoilers_keywords = config.get("spoilers", "keywords").split(",")
+            if any(word in message.clean_content.lower() for word in spoilers_keywords) \
+                    and not (message.channel.name == spoilers_channel):
+                await self.add_reaction(message, "\u26A0")  # React with a warning emoji
         # FA QuickView
         r = fa.Submission.regex
-        if r.search(message.clean_content) and self.config.getboolean("FA QuickView", "enabled"):
+        if r.search(message.clean_content) and config.getboolean("FA QuickView", "enabled"):
             links = r.findall(message.clean_content)
             for link in links:
                 link_type = link[4]
@@ -366,13 +319,13 @@ class GlyphBot(discord.Client):
                 if link_type == "view":
                     try:
                         submission = fa.Submission(id=link_id)
-                        embed = submission.get_embed(thumbnail=self.config.getboolean("FA QuickView", "thumbnail"))
+                        embed = submission.get_embed(thumbnail=config.getboolean("FA QuickView", "thumbnail"))
                         await self.safe_send_message(message.channel, embed=embed, removable=True)
                     except ValueError:
                         pass
         # Picarto QuickView
         r = picarto.Channel.regex
-        if r.search(message.clean_content) and self.config.getboolean("Picarto QuickView", "enabled"):
+        if r.search(message.clean_content) and config.getboolean("Picarto QuickView", "enabled"):
             links = r.findall(message.clean_content)
             for link in links:
                 link_name = link[4]
@@ -387,13 +340,6 @@ class GlyphBot(discord.Client):
                 and message.clean_content:  # Mae sure message isn't empty
             await self.safe_send_typing(message.channel)
             clean_message = re.sub("@{}".format(self.user.display_name), "", message.clean_content)
-            # print(detect_langs(clean_message))
-            # print(len(clean_message))
-            # lang = detect(clean_message)
-            # if len(clean_message) > 10 and lang != "en":  # TODO: Address non English messages
-            #     await self.safe_send_message(message.channel,
-            #                                  "Sorry, I only speak English right now, not {}.".format(lang))
-            #     return
 
             wit = None
             command = None
@@ -413,8 +359,8 @@ class GlyphBot(discord.Client):
                 await self.cmd_status(message)
             elif command == "reddit":
                 await self.cmd_reddit(message, wit)
-            elif command == "kick":
-                await self.cmd_kick(message, wit)
+            # elif command == "kick":
+            #     await self.cmd_kick(message, wit)
             else:
                 response = "I feel like I should know what to say, but haven't learned yet, try asking me again later."
                 if wit is not None:
@@ -433,12 +379,11 @@ class GlyphBot(discord.Client):
 
     async def on_member_join(self, member):
         server = member.server
-        if server.id in self.config.get("servers", "ignore").split(","):  # Ignore servers
-            return
-        if self.config.getboolean("modlog", "joins"):
-            await self.audit.log(member.server, auditing.MEMBER_JOIN,
-                                 "{} joined the server.".format(member.mention), user=member)  # Mod log
-        if server.id in self.config.get("servers", "special").split(","):
+        config = self.configs.get(server)
+        if config.getboolean("auditing", "joins"):
+            await self.auditor.audit(server, auditing.MEMBER_JOIN,
+                                 "{} joined the server.".format(member.mention), user=member)
+        if config.getboolean("welcome", "announce_in_server"):
             await self.safe_send_message(server.default_channel, "Welcome {}!".format(member.mention))
         # if welcomed:
         #     text = self.get_config_message("welcome", member, server)
@@ -450,21 +395,22 @@ class GlyphBot(discord.Client):
 
     async def on_member_remove(self, member):
         server = member.server
-        if server.id in self.config.get("servers", "ignore").split(","):  # Ignore servers
-            return
-        if self.config.getboolean("modlog", "leaves"):
-            await self.audit.log(member.server, auditing.MEMBER_LEAVE,
+        config = self.configs.get(server)
+        if config.getboolean("auditing", "leaves"):
+            await self.auditor.audit(member.server, auditing.MEMBER_LEAVE,
                                  "{} left the server.".format(member.mention), user=member)
         # invite = self.create_invite(member.server).url
         # await self.safe_send_message(member, "Did you leave {} by accident?
         #                                       Here's a reinvite: {}".format(member.server, invite))
 
     async def on_reaction_add(self, reaction, user):
-        if self.config.getboolean("modlog", "reactions"):
-            await self.audit.log(reaction.message.server, auditing.REACTION_ADD,
+        server = reaction.message.server
+        config = self.configs.get(server)
+        if config.getboolean("auditing", "reactions"):
+            await self.auditor.audit(server, auditing.REACTION_ADD,
                                  "{} added reaction {} to {}".format(user.mention,
                                                                      reaction.emoji, reaction.message.content),
-                                 user=user)
+                                     user=user)
         message = reaction.message
         removable = False
         is_fa_quickview = False
@@ -490,11 +436,13 @@ class GlyphBot(discord.Client):
                 await self.safe_send_message(user, "Sorry, I failed to get the full sized image for you.")
 
     async def on_reaction_remove(self, reaction, user):
-        if self.config.getboolean("modlog", "reactions"):
-            await self.audit.log(reaction.message.server, auditing.REACTION_REMOVE,
+        server = reaction.message.server
+        config = self.configs.get(server)
+        if config.getboolean("auditing", "reactions"):
+            await self.auditor.audit(server, auditing.REACTION_REMOVE,
                                  "{} removed reaction {} from {}".format(user.mention,
                                                                          reaction.emoji, reaction.message.content),
-                                 user=user)
+                                     user=user)
 
     async def on_server_join(self, server):
         log.info("{}: Added to server.".format(server))
@@ -503,6 +451,17 @@ class GlyphBot(discord.Client):
     async def on_server_remove(self, server):
         log.info("{}: Removed from server.".format(server))
         self.update_server_count()
+
+    async def on_channel_create(self, channel):
+        if channel.name == "glyph":
+            await self.safe_send_message(channel, self.get_config_message("glyphchannel"))
+
+    async def on_channel_update(self, before, after):
+        server = after.server
+        if after.name == "glyph" and not before.topic == after.topic:
+            self.configs.update({server: serverconfig.Config(server)})
+            config = self.configs.get(server)
+            await self.safe_send_message(after, "**Config Status**\n```{}```".format(config.parsing_status))
 
 if __name__ == '__main__':
     bot = GlyphBot()
