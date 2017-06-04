@@ -440,8 +440,8 @@ class GlyphBot(discord.Client):
         config = self.configs.get(server)
         if config.getboolean("auditing", "reactions"):
             await self.auditor.audit(server, auditing.REACTION_REMOVE,
-                                 "{} removed reaction {} from {}".format(user.mention,
-                                                                         reaction.emoji, reaction.message.content),
+                                     "{} removed reaction {} from {}".format(user.mention,
+                                                                             reaction.emoji, reaction.message.content),
                                      user=user)
 
     async def on_server_join(self, server):
@@ -455,6 +455,7 @@ class GlyphBot(discord.Client):
     async def on_channel_create(self, channel):
         if channel.name == "glyph":
             await self.safe_send_message(channel, self.get_config_message("glyphchannel"))
+            log.info("{}: Glyph channel created.".format(channel.server))
 
     async def on_channel_update(self, before, after):
         server = after.server
@@ -462,6 +463,7 @@ class GlyphBot(discord.Client):
             self.configs.update({server: serverconfig.Config(server)})
             config = self.configs.get(server)
             await self.safe_send_message(after, "**Config Status**\n```{}```".format(config.parsing_status))
+            log.info("{}: Configuration updated.".format(server))
 
 if __name__ == '__main__':
     bot = GlyphBot()
