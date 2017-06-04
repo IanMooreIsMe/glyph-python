@@ -445,10 +445,12 @@ class GlyphBot(discord.Client):
                                      user=user)
 
     async def on_server_join(self, server):
+        self.configs.update({server: serverconfig.Config(server)})
         log.info("{}: Added to server.".format(server))
         self.update_server_count()
 
     async def on_server_remove(self, server):
+        self.configs.pop(server)
         log.info("{}: Removed from server.".format(server))
         self.update_server_count()
 
