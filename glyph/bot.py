@@ -10,6 +10,7 @@ import praw
 import requests
 import wikia
 from wit import Wit
+from wit.wit import WitError
 
 from . import auditing
 from . import fa
@@ -186,7 +187,7 @@ class GlyphBot(discord.Client):
         if wit is not None:  # Get all the values needed to assign people roles
             try:
                 # TODO: Finish rewriting for loops with discord.utils equivalents
-                target_user = discord.utils.get(message.server.members, name=wit["entities"]["user"][0]["value"])
+                target_user = discord.utils.get(message.server.members, id=wit["entities"]["user"][0]["value"])
                 if target_user is None:
                     await self.safe_send_message(message.channel,
                                                  "Sorry, I can't seem to find {} in this server.".format(
@@ -337,16 +338,23 @@ class GlyphBot(discord.Client):
                     pass
         # Check if the message should be replied to
         if (self.user in message.mentions or message.channel.type is discord.ChannelType.private) \
-                and message.clean_content:  # Mae sure message isn't empty
+                and message.clean_content:  # Make sure message isn't empty
             await self.safe_send_typing(message.channel)
-            clean_message = re.sub("@{}".format(self.user.display_name), "", message.clean_content)
+            try:
+                member = discord.utils.get(message.server.members, id=self.user.id)
+                if member is None:
+                    member = self.user
+            except AttributeError:
+                member = self.user
+            print(member.display_name)
+            clean_message = re.sub("@{}".format(member.display_name), "", message.clean_content)
 
             wit = None
             command = None
             try:
                 wit = self.wit.message(clean_message)
                 command = wit["entities"]["command"][0]["value"]
-            except KeyError:
+            except (KeyError, WitError):
                 pass
 
             if command == "wiki":
@@ -362,15 +370,15 @@ class GlyphBot(discord.Client):
             # elif command == "kick":
             #     await self.cmd_kick(message, wit)
             else:
-                response = "I feel like I should know what to say, but haven't learned yet, try asking me again later."
+                help_command = "help"
+                if message.channel.type is not discord.ChannelType.private:
+                    help_command = "@{} help".format(member.display_name)
+                response = "You didn't say anything...\nIf you need help, say `{}`.".format(help_command)
                 if wit is not None:
                     try:
                         canned_responses = wit["entities"]["canned_response"][0]["metadata"].split("\n")
                         response = random.choice(canned_responses)
                     except KeyError:
-                        help_command = "help"
-                        if message.channel.type is not discord.ChannelType.private:
-                            help_command = "@{} help".format(self.user.display_name)
                         await self.safe_send_message(message.channel,
                                                      "Sorry, I don't understand (yet).\n"
                                                      "If you need help, say `{}`.".format(help_command))
