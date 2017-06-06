@@ -187,7 +187,7 @@ class GlyphBot(discord.Client):
         if wit is not None:  # Get all the values needed to assign people roles
             try:
                 # TODO: Finish rewriting for loops with discord.utils equivalents
-                target_user = discord.utils.get(message.server.members, id=wit["entities"]["user"][0]["value"])
+                target_user = discord.utils.get(message.server.members, name=wit["entities"]["user"][0]["value"])
                 if target_user is None:
                     await self.safe_send_message(message.channel,
                                                  "Sorry, I can't seem to find {} in this server.".format(
@@ -346,7 +346,6 @@ class GlyphBot(discord.Client):
                     member = self.user
             except AttributeError:
                 member = self.user
-            print(member.display_name)
             clean_message = re.sub("@{}".format(member.display_name), "", message.clean_content)
 
             wit = None
