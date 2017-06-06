@@ -456,7 +456,12 @@ class GlyphBot(discord.Client):
 
     async def on_channel_create(self, channel):
         if channel.name == "glyph":
-            await self.safe_send_message(channel, self.get_config_message("glyphchannel"))
+            embed = discord.Embed(title="Glyph Channel",
+                                  description="Congratulations on creating the `glyph` channel!\n"
+                                              "This will be used to configure me.\n"
+                                              "Click [here](https://glyph-discord.readthedocs.io/"
+                                              "en/latest/configuration.html) to get started.")
+            await self.safe_send_message(channel, embed=embed)
             log.info("{}: Glyph channel created.".format(channel.server))
 
     async def on_channel_update(self, before, after):
@@ -464,7 +469,14 @@ class GlyphBot(discord.Client):
         if after.name == "glyph" and not before.topic == after.topic:
             self.configs.update({server: serverconfig.Config(server)})
             config = self.configs.get(server)
-            await self.safe_send_message(after, "**Config Status**\n```{}```".format(config.parsing_status))
+            color = 0xFF0000  # Red
+            if config.parsing_status == "Okay":
+                color = 0x00FF00  # Green
+            embed = discord.Embed(title="Configuration Parsing Status",
+                                  description=config.parsing_status,
+                                  timestamp=datetime.now(), color=color)
+
+            await self.safe_send_message(after, embed=embed)
             log.info("{}: Configuration updated.".format(server))
 
 if __name__ == '__main__':

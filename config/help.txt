@@ -10,6 +10,6 @@ Instead, you can ask me to do what you want by writing your message and @mention
 *Messages that contain keywords for spoilers (as defined by the server) will reacted to with a warning if not in the appropriate text channels.*
 
 I am constantly evolving, [learning](https://wit.ai/), and having more features being added.
-Be sure to check out the wiki (once available).
+Be sure to check out the full skills list.
 
-[Official Glyph-Discord Server](https://discord.me/glyph-discord) - [Add Me To Your Server](https://discordapp.com/oauth2/authorize?client_id=248186527161516032&scope=bot&permissions=268722273)
+[Full Skills List](https://glyph-discord.readthedocs.io/en/latest/skills.html) - [Official Glyph Server](https://discord.me/glyph-discord) - [Add Me To Your Server](https://discordapp.com/oauth2/authorize?client_id=248186527161516032&scope=bot&permissions=268722273)

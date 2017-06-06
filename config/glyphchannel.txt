@@ -1,35 +1,6 @@
 **Glyph Channel**
 It appears you have created a channel for me.
-This will be used to push important update announcements and to configure my wiki.
+This will be used to push important update announcements and to configure me.
 
-To begin, copy the following default configuration into this channel's description.
-```
-[wiki]
-wiki = masseffect
-
-[spoilers]
-enabled = false
-channel = ark
-keywords = kett,tempest,ryder,hyperion,nexus,helius,pathfinder,drack,remnant,peebee,liam,cora,kadara,vetra,kallo,angara,archon,jaal,costa,kandros,tiran
-
-[welcome]
-announce_in_server = false
-
-[FA QuickView]
-enabled = true
-thumbnail = false
-
-[Picarto QuickView]
-enabled = true
-
-[auditing]
-channel = log
-joins = true
-leaves = true
-reactions = false
-```
-
-You are all set! Change the values as you see fit.
-
-For more information, or to give feedback on this setup, please go to: https://discord.me/glyph-discord
+Visit https://glyph-discord.readthedocs.io/en/latest/configuration.html to get started.
 
