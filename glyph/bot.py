@@ -152,8 +152,7 @@ class GlyphBot(discord.Client):
         except discord.Forbidden:
             log.warning("Cannot remove roles, no permission?")
 
-    async def cmd_wiki(self, message, *, wiki=None, query=None):
-        server = message.server
+    async def skill_wiki(self, message, *, wiki=None, query=None):
         if wiki is None:
             await self.safe_send_message(message.channel, "Sorry, no valid wiki is set.", expire_time=5)
             return
@@ -175,31 +174,27 @@ class GlyphBot(discord.Client):
                                          "Sorry, I have no information for your search query `{}`.".format(query),
                                          expire_time=5)
 
-    async def cmd_change_role(self, message, wit=None, *, target_user=None, desired_role=None):
+    async def skill_change_role(self, message, *, target_user=None, desired_role=None):
         if message.channel.is_private:  # You can't set a role, if you're not in a server
             await self.safe_send_message(message.channel, "You must be in a server to set a role.")
             return
-        if wit is not None:  # Get all the values needed to assign people roles
-            try:
-                # TODO: Finish rewriting for loops with discord.utils equivalents
-                target_user = discord.utils.get(message.server.members, name=wit["entities"]["user"][0]["value"])
-                if target_user is None:
-                    await self.safe_send_message(message.channel,
-                                                 "Sorry, I can't seem to find {} in this server.".format(
-                                                     wit["entities"]["user"][0]["value"]))
-                    return
-                if not message.author.permissions_in(message.channel).manage_roles:
-                    await self.safe_send_message(message.channel,
-                                                 "You don't have permission to set {}'s role.".format(target_user.name))
-                    return
-            except KeyError:
-                target_user = message.author
-            try:
-                desired_role = wit["entities"]["role"][0]["value"]
-            except KeyError:
+        try:
+            # TODO: Finish rewriting for loops with discord.utils equivalents
+            target_user = discord.utils.get(message.server.members, name=target_user)
+            if target_user is None:
                 await self.safe_send_message(message.channel,
-                                             "Sorry, I can not seem to find a desired role in your message.")
+                                             "Sorry, I can't seem to find {} in this server.".format(target_user))
                 return
+            if not message.author.permissions_in(message.channel).manage_roles:
+                await self.safe_send_message(message.channel,
+                                             "You don't have permission to set {}'s role.".format(target_user.name))
+                return
+        except KeyError:
+            target_user = message.author
+        if desired_role is None:
+            await self.safe_send_message(message.channel,
+                                         "Sorry, I can not seem to find a desired role in your message.")
+            return
         # TODO: Check permissions and improve safe remove and add permissions
         available_roles = []
         new_role = None
@@ -225,21 +220,18 @@ class GlyphBot(discord.Client):
         role_change_embed.set_thumbnail(url=target_user.avatar_url)
         await self.safe_send_message(message.channel, "", embed=role_change_embed)
 
-    async def cmd_status(self, message):
+    async def skill_status(self, message):
         start = datetime.now().microsecond
         msg = await self.safe_send_message(message.channel,
                                            ":ok_hand: ? ms ping in {} servers!".format(len(self.servers)))
         diff = int((datetime.now().microsecond - start)/1000)
         await self.safe_edit_message(msg, ":ok_hand: {} ms ping in {} servers!".format(diff, len(self.servers)))
 
-    async def cmd_reddit(self, message, wit, *, multireddit=None):
-        if wit is not None:
-            try:
-                multireddit = wit["entities"]["multireddit"][0]["metadata"]
-            except KeyError:
-                await self.safe_send_message(message.channel, "I think you wanted an image from Reddit, "
-                                                              "but I'm not sure of what. Sorry.")
-                return
+    async def skill_reddit(self, message, *, multireddit=None):
+        if multireddit is None:
+            await self.safe_send_message(message.channel, "I think you wanted an image from Reddit, "
+                                                          "but I'm not sure of what. Sorry.")
+            return
         try:
             while True:  # Get an image that can be embedded
                 try:
@@ -255,7 +247,7 @@ class GlyphBot(discord.Client):
         except praw.exceptions.ClientException:
             await self.safe_send_message(message.channel, "Sorry, I had an issue communicating with Reddit.")
 
-    async def cmd_help(self, message):
+    async def skill_help(self, message):
         help_embed = discord.Embed(
             title="Glyph Help",
             description=self.get_config_message("help", message.author, message.server),
@@ -264,7 +256,7 @@ class GlyphBot(discord.Client):
         if message.channel.type is not discord.ChannelType.private:
             await self.safe_send_message(message.channel, "Sending you a PM now.", expire_time=5)
 
-    async def cmd_kick(self, message, wit, *, member=None):
+    async def skill_kick(self, message, wit, *, member=None):
         if message.channel.is_private:
             await self.safe_send_message(message.channel, "You have to be in a server to kick someone.")
             return
@@ -352,26 +344,28 @@ class GlyphBot(discord.Client):
             action = ai.action[0]
             if action == "skill":
                 skill = ai.action[1]
+                subskill = ai.action[2]
                 if skill == "wiki":
-                    try:
-                        query = ai.parameters["search_query"]
-                        wiki = config.get("wiki", "wiki")
-                        await self.cmd_wiki(message, query=query, wiki=wiki)
-                    except ValueError:
-                        await self.safe_send_message(message.channel, "I messed up!")
+                    query = ai.get_parameter("search_query")
+                    wiki = config.get("wiki", "wiki")
+                    await self.skill_wiki(message, query=query, wiki=wiki)
                 elif skill == "help":
-                    await self.cmd_help(message)
+                    await self.skill_help(message)
                 elif skill == "role":
-                    await self.cmd_change_role(message, ai)
+                    if subskill == "set":
+                        desired_role = ai.get_parameter("role")
+                        target_user = ai.get_parameter("user", fallback=message.author.name)
+                        await self.skill_change_role(message, desired_role=desired_role, target_user=target_user)
                 elif skill == "status":
-                    await self.cmd_status(message)
+                    await self.skill_status(message)
                 elif skill == "reddit":
-                    await self.cmd_reddit(message, ai)
-                # elif command == "kick":
-                #     await self.cmd_kick(message, wit)
+                    multireddit = ai.get_parameter("multireddit")
+                    await self.skill_reddit(message, multireddit=multireddit)
+                # elif skill == "moderation":
+                #   if subskill == "kick":
+                #     await self.skill_kick(message, wit)
             else:
                 await self.safe_send_message(message.channel, ai.response)
-
 
     async def on_member_join(self, member):
         server = member.server

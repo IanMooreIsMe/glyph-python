@@ -24,3 +24,12 @@ class AIResponse(object):
         self.parameters = response["result"]["parameters"]
         self.response = response["result"]["fulfillment"]["speech"]
 
+    def get_parameter(self, parameter, *, fallback=None):
+        try:
+            value = self.parameters[parameter]
+            if value is "":
+                raise KeyError
+            return self.parameters[parameter]
+        except KeyError:
+            return fallback
+
