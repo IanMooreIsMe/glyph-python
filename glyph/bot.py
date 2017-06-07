@@ -1,6 +1,5 @@
 import asyncio
 import logging
-import random
 import re
 from datetime import datetime
 from os import environ
@@ -9,9 +8,8 @@ import discord
 import praw
 import requests
 import wikia
-from wit import Wit
-from wit.wit import WitError
 
+from . import apiai
 from . import auditing
 from . import fa
 from . import picarto
@@ -28,7 +26,7 @@ class GlyphBot(discord.Client):
 
     def __init__(self):
         self.auditor = auditing.Auditor(self)
-        self.wit = Wit(access_token=environ.get("WIT_TOKEN"))
+        self.apiai = apiai.AIProcessor(client_access_token=environ.get("APIAI_TOKEN"))
         self.configs = {None: serverconfig.Config()}  # Set up for DMs
         self.reddit = praw.Reddit(client_id=environ.get("REDDIT_CLIENT_ID"),
                                   client_secret=environ.get("REDDIT_SECRET"),
@@ -154,17 +152,14 @@ class GlyphBot(discord.Client):
         except discord.Forbidden:
             log.warning("Cannot remove roles, no permission?")
 
-    async def cmd_wiki(self, message, wit, *, wiki=None, query=None):
+    async def cmd_wiki(self, message, *, wiki=None, query=None):
         server = message.server
         if wiki is None:
-            config = self.configs.get(server)
-            wiki = config.get("wiki", "wiki")
-        if wit is not None:
-            try:
-                query = wit["entities"]["wikipedia_search_query"][0]["value"]
-            except KeyError:
-                await self.safe_send_message(message.channel, "Sorry, I couldn't find a search query.", expire_time=5)
-                return
+            await self.safe_send_message(message.channel, "Sorry, no valid wiki is set.", expire_time=5)
+            return
+        if query is None:
+            await self.safe_send_message(message.channel, "Sorry, I couldn't find a search query.", expire_time=5)
+            return
         try:
             search = wikia.search(wiki, query)
             page = wikia.page(wiki, search[0])
@@ -348,41 +343,35 @@ class GlyphBot(discord.Client):
                 member = self.user
             clean_message = re.sub("@{}".format(member.display_name), "", message.clean_content)
 
-            wit = None
-            command = None
+            ai = None
             try:
-                wit = self.wit.message(clean_message)
-                command = wit["entities"]["command"][0]["value"]
-            except (KeyError, WitError):
+                ai = self.apiai.query(clean_message, message.author.id)
+            except KeyError:
                 pass
 
-            if command == "wiki":
-                await self.cmd_wiki(message, wit)
-            elif command == "help":
-                await self.cmd_help(message)
-            elif command == "role":
-                await self.cmd_change_role(message, wit)
-            elif command == "status":
-                await self.cmd_status(message)
-            elif command == "reddit":
-                await self.cmd_reddit(message, wit)
-            # elif command == "kick":
-            #     await self.cmd_kick(message, wit)
-            else:
-                help_command = "help"
-                if message.channel.type is not discord.ChannelType.private:
-                    help_command = "@{} help".format(member.display_name)
-                response = "You didn't say anything...\nIf you need help, say `{}`.".format(help_command)
-                if wit is not None:
+            action = ai.action[0]
+            if action == "skill":
+                skill = ai.action[1]
+                if skill == "wiki":
                     try:
-                        canned_responses = wit["entities"]["canned_response"][0]["metadata"].split("\n")
-                        response = random.choice(canned_responses)
-                    except KeyError:
-                        await self.safe_send_message(message.channel,
-                                                     "Sorry, I don't understand (yet).\n"
-                                                     "If you need help, say `{}`.".format(help_command))
-                        return
-                await self.safe_send_message(message.channel, response)
+                        query = ai.parameters["search_query"]
+                        wiki = config.get("wiki", "wiki")
+                        await self.cmd_wiki(message, query=query, wiki=wiki)
+                    except ValueError:
+                        await self.safe_send_message(message.channel, "I messed up!")
+                elif skill == "help":
+                    await self.cmd_help(message)
+                elif skill == "role":
+                    await self.cmd_change_role(message, ai)
+                elif skill == "status":
+                    await self.cmd_status(message)
+                elif skill == "reddit":
+                    await self.cmd_reddit(message, ai)
+                # elif command == "kick":
+                #     await self.cmd_kick(message, wit)
+            else:
+                await self.safe_send_message(message.channel, ai.response)
+
 
     async def on_member_join(self, member):
         server = member.server
