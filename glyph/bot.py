@@ -344,7 +344,6 @@ class GlyphBot(discord.Client):
             action = ai.action[0]
             if action == "skill":
                 skill = ai.action[1]
-                subskill = ai.action[2]
                 if skill == "wiki":
                     query = ai.get_parameter("search_query")
                     wiki = config.get("wiki", "wiki")
@@ -352,6 +351,7 @@ class GlyphBot(discord.Client):
                 elif skill == "help":
                     await self.skill_help(message)
                 elif skill == "role":
+                    subskill = ai.action[2]
                     if subskill == "set":
                         desired_role = ai.get_parameter("role")
                         target_user = ai.get_parameter("user", fallback=message.author.name)
