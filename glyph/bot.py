@@ -334,7 +334,7 @@ class GlyphBot(discord.Client):
                     member = self.user
             except AttributeError:
                 member = self.user
-            clean_message = re.sub("@{}".format(member.display_name), "", message.clean_content).lstrip().rstrip()
+            clean_message = re.sub("@{}".format(member.display_name), "", message.clean_content).strip()
 
             ai = None
             try:
