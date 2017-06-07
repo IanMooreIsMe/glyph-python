@@ -166,7 +166,7 @@ class GlyphBot(discord.Client):
             embed = discord.Embed(title=page.title, url=url, description=page.summary)
             try:
                 embed.set_thumbnail(url=page.images[0])
-            except IndexError:
+            except (IndexError, AttributeError):
                 pass
             await self.safe_send_message(message.channel, embed=embed, removable=True)
         except (ValueError, wikia.wikia.WikiaError):
