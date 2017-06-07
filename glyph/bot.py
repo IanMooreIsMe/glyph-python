@@ -2,6 +2,7 @@ import asyncio
 import logging
 import re
 from datetime import datetime
+from json.decoder import JSONDecodeError
 from os import environ
 
 import discord
@@ -338,6 +339,10 @@ class GlyphBot(discord.Client):
             ai = None
             try:
                 ai = self.apiai.query(clean_message, message.author.id)
+            except JSONDecodeError:
+                await self.safe_send_message(message.channel, "Sorry, it appears api.ai is currently unavailable.\n"
+                                                              "Please try again later.")
+                return
             except KeyError:
                 pass
 
