@@ -183,19 +183,10 @@ class GlyphBot(discord.Client):
         if message.channel.is_private:  # You can't set a role, if you're not in a server
             await self.safe_send_message(message.channel, "You must be in a server to set a role.")
             return
-        try:
-            # TODO: Finish rewriting for loops with discord.utils equivalents
-            target_user = discord.utils.get(message.server.members, name=target_user)
-            if target_user is None:
-                await self.safe_send_message(message.channel,
-                                             "Sorry, I can't seem to find {} in this server.".format(target_user))
-                return
-            if not message.author.permissions_in(message.channel).manage_roles:
-                await self.safe_send_message(message.channel,
-                                             "You don't have permission to set {}'s role.".format(target_user.name))
-                return
-        except KeyError:
-            target_user = message.author
+        if not target_user == message.author and not message.author.permissions_in(message.channel).manage_roles:
+            await self.safe_send_message(message.channel,
+                                         "You don't have permission to set {}'s role.".format(target_user.name))
+            return
         if desired_role is None:
             await self.safe_send_message(message.channel,
                                          "Sorry, I can not seem to find a desired role in your message.")
@@ -358,6 +349,8 @@ class GlyphBot(discord.Client):
             except AttributeError:
                 member = self.user
             clean_message = re.sub("@{}".format(member.display_name), "", message.clean_content).strip()
+            clean_mentions = message.mentions
+            clean_mentions.remove(member)
 
             ai = None
             try:
@@ -382,7 +375,10 @@ class GlyphBot(discord.Client):
                 elif skill == "role":
                     if subskill == "set":
                         desired_role = ai.get_parameter("role")
-                        target_user = ai.get_parameter("user", fallback=message.author.name)
+                        try:
+                            target_user = clean_mentions[0]
+                        except IndexError:
+                            target_user = message.author
                         await self.skill_change_role(message, config.get("roles", "allowed").split(","),
                                                      desired_role=desired_role, target_user=target_user)
                     elif subskill == "list":
