@@ -20,7 +20,7 @@ class AIProcessor(object):
 class AIResponse(object):
 
     def __init__(self, response):
-        self.action = response["result"]["action"].split(".")
+        self.actions = response["result"]["action"].split(".")
         self.parameters = response["result"]["parameters"]
         self.response = response["result"]["fulfillment"]["speech"]
 
@@ -33,3 +33,9 @@ class AIResponse(object):
         except KeyError:
             return fallback
 
+    def get_action_depth(self, level):
+        try:
+            value = self.actions[level]
+            return value
+        except IndexError:
+            return None

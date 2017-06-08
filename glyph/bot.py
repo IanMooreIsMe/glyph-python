@@ -143,15 +143,19 @@ class GlyphBot(discord.Client):
 
     async def safe_add_roles(self, member, *roles):
         try:
-            return await self.add_roles(member, *roles)
+            await self.add_roles(member, *roles)
+            return True
         except discord.Forbidden:
-            log.warning("Cannot add roles, no permission?")
+            log.warning("{}: Cannot add roles, no permission?".format(member.server))
+            return False
 
     async def safe_remove_roles(self, member, *roles):
         try:
-            return await self.remove_roles(member, *roles)
+            await self.remove_roles(member, *roles)
+            return True
         except discord.Forbidden:
-            log.warning("Cannot remove roles, no permission?")
+            log.warning("{}: Cannot remove roles, no permission?".format(member.server))
+            return False
 
     async def skill_wiki(self, message, *, wiki=None, query=None):
         if wiki is None:
@@ -175,7 +179,7 @@ class GlyphBot(discord.Client):
                                          "Sorry, I have no information for your search query `{}`.".format(query),
                                          expire_time=5)
 
-    async def skill_change_role(self, message, *, target_user=None, desired_role=None):
+    async def skill_change_role(self, message, roles, *, target_user=None, desired_role=None):
         if message.channel.is_private:  # You can't set a role, if you're not in a server
             await self.safe_send_message(message.channel, "You must be in a server to set a role.")
             return
@@ -197,29 +201,46 @@ class GlyphBot(discord.Client):
                                          "Sorry, I can not seem to find a desired role in your message.")
             return
         # TODO: Check permissions and improve safe remove and add permissions
-        available_roles = []
-        new_role = None
-        for role in message.server.roles:  # Make a list of roles the user has permission for and save the one they want
-            if not role.permissions.manage_roles and role.permissions.send_messages and not role.is_everyone:
-                available_roles.append(role)
-                if desired_role == role.name.lower():
-                    new_role = role
-        if new_role is None:
-            friendly_available_roles = ""
-            for role in available_roles:
-                friendly_available_roles += ("`{}` ".format(role.name))
-            await self.safe_send_message(message.channel, "Sorry, but you can't be `{}`.\n"
-                                                          "Available roles are: {}".format(desired_role,
-                                                                                           friendly_available_roles))
+        allowed_roles = list(filter(lambda x: x.name in roles, message.server.roles))
+        new_role = discord.utils.get(message.server.roles, name=desired_role)
+        print(target_user)
+        if not allowed_roles:
+            await self.safe_send_message(message.channel, "Sorry, but this server has no available roles configured.")
+        elif new_role is None or new_role not in allowed_roles:
+            await self.safe_send_message(message.channel,
+                                         "Sorry, but `{}` is not an available role.".format(desired_role))
+            await self.skill_list_roles(message, roles)
+        else:
+            await self.safe_remove_roles(target_user, *allowed_roles)  # Remove all old roles
+            await asyncio.sleep(.2)  # Wait because of rate limiting
+            role_set = await self.safe_add_roles(target_user, new_role)  # Add the new role
+            if role_set:
+                role_change_message = "{} you are now a {}!".format(target_user.mention, new_role.mention)
+                role_change_embed = discord.Embed(
+                    title="Poof!", description=role_change_message, colour=0x42F465)
+                role_change_embed.set_thumbnail(url=target_user.avatar_url)
+                await self.safe_send_message(message.channel, embed=role_change_embed)
+            else:
+                await self.safe_send_message(message.channel,
+                                             "Sorry, I can not assign the role `{}`.".format(desired_role))
+                await self.skill_list_roles(message, roles)
+
+    async def skill_list_roles(self, message, roles):
+        if message.channel.is_private:  # You can't list roles, if you're not in a server
+            await self.safe_send_message(message.channel, "You must be in a server to list roles.")
             return
-        await self.safe_remove_roles(target_user, *available_roles)  # Remove all old roles
-        await asyncio.sleep(.2)  # Wait because of rate limiting
-        await self.safe_add_roles(target_user, new_role)  # Add the new role
-        role_change_message = "{} you are now a {}!".format(target_user.mention, new_role.mention)
-        role_change_embed = discord.Embed(
-            title="Poof!", description=role_change_message, colour=0x42F465)
-        role_change_embed.set_thumbnail(url=target_user.avatar_url)
-        await self.safe_send_message(message.channel, "", embed=role_change_embed)
+        allowed_roles = list(filter(lambda x: x.name in roles, message.server.roles))
+        if not allowed_roles:
+            await self.safe_send_message(message.channel, "Sorry, but {} has no "
+                                                          "available roles configured.".format(message.server.name))
+        else:
+            friendly_available_roles = ""
+            for role in allowed_roles:
+                friendly_available_roles += ("{}\n".format(role.mention))
+            embed = discord.Embed(title="Available Roles",
+                                  description=friendly_available_roles,
+                                  timestamp=datetime.now())
+            await self.safe_send_message(message.channel, embed=embed)
 
     async def skill_status(self, message):
         start = datetime.now().microsecond
@@ -346,9 +367,10 @@ class GlyphBot(discord.Client):
             except KeyError:
                 pass
 
-            action = ai.action[0]
+            action = ai.get_action_depth(0)
             if action == "skill":
-                skill = ai.action[1]
+                skill = ai.get_action_depth(1)
+                subskill = ai.get_action_depth(2)
                 if skill == "wiki":
                     query = ai.get_parameter("search_query")
                     wiki = config.get("wiki", "wiki")
@@ -356,11 +378,13 @@ class GlyphBot(discord.Client):
                 elif skill == "help":
                     await self.skill_help(message)
                 elif skill == "role":
-                    subskill = ai.action[2]
                     if subskill == "set":
                         desired_role = ai.get_parameter("role")
                         target_user = ai.get_parameter("user", fallback=message.author.name)
-                        await self.skill_change_role(message, desired_role=desired_role, target_user=target_user)
+                        await self.skill_change_role(message, config.get("roles", "allowed").split(","),
+                                                     desired_role=desired_role, target_user=target_user)
+                    elif subskill == "list":
+                        await self.skill_list_roles(message, config.get("roles", "allowed").split(","))
                 elif skill == "status":
                     await self.skill_status(message)
                 elif skill == "reddit":
