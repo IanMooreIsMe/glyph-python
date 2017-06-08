@@ -201,8 +201,11 @@ class GlyphBot(discord.Client):
                                          "Sorry, I can not seem to find a desired role in your message.")
             return
         # TODO: Check permissions and improve safe remove and add permissions
-        allowed_roles = list(filter(lambda x: x.name in roles, message.server.roles))
-        new_role = discord.utils.get(message.server.roles, name=desired_role)
+        allowed_roles = list(filter(lambda x: x.name.lower() in map(str.lower, roles), message.server.roles))
+        try:
+            new_role = list(filter(lambda x: x.name.lower() == desired_role.lower(), message.server.roles))[0]
+        except IndexError:
+            new_role = None
         if not allowed_roles:
             await self.safe_send_message(message.channel, "Sorry, but this server has no available roles configured.")
         elif new_role is None or new_role not in allowed_roles:
