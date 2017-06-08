@@ -203,7 +203,6 @@ class GlyphBot(discord.Client):
         # TODO: Check permissions and improve safe remove and add permissions
         allowed_roles = list(filter(lambda x: x.name in roles, message.server.roles))
         new_role = discord.utils.get(message.server.roles, name=desired_role)
-        print(target_user)
         if not allowed_roles:
             await self.safe_send_message(message.channel, "Sorry, but this server has no available roles configured.")
         elif new_role is None or new_role not in allowed_roles:
@@ -368,7 +367,7 @@ class GlyphBot(discord.Client):
                 pass
 
             action = ai.get_action_depth(0)
-            if action == "skill":
+            if action == "skill" and not ai.action_incomplete:
                 skill = ai.get_action_depth(1)
                 subskill = ai.get_action_depth(2)
                 if skill == "wiki":

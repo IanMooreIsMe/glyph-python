@@ -21,6 +21,7 @@ class AIResponse(object):
 
     def __init__(self, response):
         self.actions = response["result"]["action"].split(".")
+        self.action_incomplete = bool(response["result"]["actionIncomplete"])
         self.parameters = response["result"]["parameters"]
         self.response = response["result"]["fulfillment"]["speech"]
 
