@@ -350,7 +350,10 @@ class GlyphBot(discord.Client):
                 member = self.user
             clean_message = re.sub("@{}".format(member.display_name), "", message.clean_content).strip()
             clean_mentions = message.mentions
-            clean_mentions.remove(member)
+            try:
+                clean_mentions.remove(member)
+            except ValueError:
+                pass
 
             ai = None
             try:
