@@ -29,6 +29,7 @@ class GlyphBot(discord.Client):
         self.auditor = auditing.Auditor(self)
         self.apiai = apiai.AIProcessor(client_access_token=environ.get("APIAI_TOKEN"))
         self.configs = {None: serverconfig.Config()}  # Set up for DMs
+        self.removable_messages = []
         self.reddit = praw.Reddit(client_id=environ.get("REDDIT_CLIENT_ID"),
                                   client_secret=environ.get("REDDIT_SECRET"),
                                   user_agent=environ.get("REDDIT_USER_AGENT"))
@@ -86,8 +87,8 @@ class GlyphBot(discord.Client):
         if content is None and embed is None:
             log.error("A message needs to have content!")
             return None
-        elif embed is not None and removable:
-            embed.set_footer(text="React \u274C to delete this.")
+        elif embed is not None and removable and not expire_time:
+                embed.set_footer(text="React \u274C to delete this.")
         msg = None
         try:
             msg = await self.send_message(destination, content, embed=embed)
@@ -95,6 +96,8 @@ class GlyphBot(discord.Client):
             if msg and expire_time:
                 await asyncio.sleep(expire_time)
                 await self.delete_message(msg)
+            elif msg and removable:
+                self.removable_messages.append(msg.id)
         except discord.Forbidden:
             log.warning("{} - {}: Cannot send message, no permission?".format(destination.server, destination.name))
         except discord.NotFound:
@@ -236,11 +239,12 @@ class GlyphBot(discord.Client):
             await self.safe_send_message(message.channel, embed=embed)
 
     async def skill_status(self, message):
+        servers = len(self.servers)
         start = datetime.now().microsecond
         msg = await self.safe_send_message(message.channel,
-                                           ":ok_hand: ? ms ping in {} servers!".format(len(self.servers)))
+                                           ":ok_hand: ? ms ping in {} servers!".format(servers))
         diff = int((datetime.now().microsecond - start)/1000)
-        await self.safe_edit_message(msg, ":ok_hand: {} ms ping in {} servers!".format(diff, len(self.servers)))
+        await self.safe_edit_message(msg, ":ok_hand: {} ms ping in {} servers!".format(diff, servers))
 
     async def skill_reddit(self, message, *, multireddit=None):
         if multireddit is None:
@@ -296,7 +300,9 @@ class GlyphBot(discord.Client):
         self.update_server_count()
         for server in self.servers:
             self.configs.update({server: serverconfig.Config(server)})
-            log.info("{}: Connected to server.".format(server))
+        servers = len(self.servers)
+        members = len(self.get_all_members())
+        log.info("Connected to {} server(s) with {} users.".format(servers, members))
 
     async def on_message(self, message):
         # Don't talk to yourself
@@ -426,34 +432,39 @@ class GlyphBot(discord.Client):
     async def on_reaction_add(self, reaction, user):
         server = reaction.message.server
         config = self.configs.get(server)
+        message = reaction.message
         if config.getboolean("auditing", "reactions"):
             await self.auditor.audit(server, auditing.REACTION_ADD,
-                                 "{} added reaction {} to {}".format(user.mention,
-                                                                     reaction.emoji, reaction.message.content),
+                                     "{} added reaction {} to {}".format(user.mention,
+                                                                         reaction.emoji,
+                                                                         reaction.message.content),
                                      user=user)
-        message = reaction.message
-        removable = False
-        is_fa_quickview = False
-        if not reaction.message.author == self.user:
-            return
-        try:
-            removable = ("React \u274C to delete this." in str(message.embeds[0]))
-            is_fa_quickview = ("React \U0001F48C to receive full size image in a DM." in str(message.embeds[0]))
-        except IndexError:
-            pass
-        if reaction.emoji == "\u274C" and removable:
+        if message.id in self.removable_messages:
             embed = discord.Embed(description=":x: Removed!", color=0xFF0000)
-            await self.safe_edit_message(reaction.message, embed=embed, expire_time=5, clear_reactions=True)
-        elif reaction.emoji == "\U0001F48C" and is_fa_quickview:
-            try:
-                embed = message.embeds[0]
-                submission = fa.Submission(url=embed['url'])
-                embed = discord.Embed(title=submission.title, url=submission.link, colour=submission.color)
-                embed.set_footer(text="React \u274C to delete this.")
-                embed.set_image(url=submission.download)
-                await self.safe_send_message(user, embed=embed)
-            except ValueError:
-                await self.safe_send_message(user, "Sorry, I failed to get the full sized image for you.")
+            await self.safe_edit_message(message, embed=embed, expire_time=5, clear_reactions=True)
+            self.removable_messages.remove(message.id)
+        # removable = False
+        # is_fa_quickview = False
+        # if not reaction.message.author == self.user:
+        #     return
+        # try:
+        #     removable = ("React \u274C to delete this." in str(message.embeds[0]))
+        #     is_fa_quickview = ("React \U0001F48C to receive full size image in a DM." in str(message.embeds[0]))
+        # except IndexError:
+        #     pass
+        # if reaction.emoji == "\u274C" and removable:
+        #     embed = discord.Embed(description=":x: Removed!", color=0xFF0000)
+        #     await self.safe_edit_message(reaction.message, embed=embed, expire_time=5, clear_reactions=True)
+        # elif reaction.emoji == "\U0001F48C" and is_fa_quickview:
+        #     try:
+        #         embed = message.embeds[0]
+        #         submission = fa.Submission(url=embed['url'])
+        #         embed = discord.Embed(title=submission.title, url=submission.link, colour=submission.color)
+        #         embed.set_footer(text="React \u274C to delete this.")
+        #         embed.set_image(url=submission.download)
+        #         await self.safe_send_message(user, embed=embed)
+        #     except ValueError:
+        #         await self.safe_send_message(user, "Sorry, I failed to get the full sized image for you.")
 
     async def on_reaction_remove(self, reaction, user):
         server = reaction.message.server
