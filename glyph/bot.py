@@ -6,7 +6,9 @@ from json.decoder import JSONDecodeError
 from os import environ
 
 import discord
+import humanize
 import praw
+import psutil
 import requests
 import wikia
 
@@ -30,6 +32,8 @@ class GlyphBot(discord.Client):
         self.apiai = apiai.AIProcessor(client_access_token=environ.get("APIAI_TOKEN"))
         self.configs = {None: serverconfig.Config()}  # Set up for DMs
         self.removable_messages = []
+        self.total_members = lambda: sum(1 for i in self.get_all_members())
+        self.total_servers = lambda: len(self.servers)
         self.reddit = praw.Reddit(client_id=environ.get("REDDIT_CLIENT_ID"),
                                   client_secret=environ.get("REDDIT_SECRET"),
                                   user_agent=environ.get("REDDIT_USER_AGENT"))
@@ -239,12 +243,25 @@ class GlyphBot(discord.Client):
             await self.safe_send_message(message.channel, embed=embed)
 
     async def skill_status(self, message):
-        servers = len(self.servers)
+        def status_embed(ping):
+            servers = humanize.intcomma(self.total_servers())
+            members = humanize.intcomma(self.total_members())
+            memory = psutil.virtual_memory()
+            total_memory = humanize.naturalsize(memory.total)
+            used_memory = humanize.naturalsize(memory.used)
+            cpu_percent = psutil.cpu_percent()
+            embed = discord.Embed(title="Glyph Status",
+                                  description="**Ping** {} ms\n\n"
+                                              "**Servers** {}\n**Members** {}\n\n"
+                                              "**Memory** {}/{} ({}%)\n**CPU** {}%".format(
+                                                ping,
+                                                servers, members,
+                                                used_memory, total_memory, memory.percent, cpu_percent))
+            return embed
         start = datetime.now().microsecond
-        msg = await self.safe_send_message(message.channel,
-                                           ":ok_hand: ? ms ping in {} servers!".format(servers))
+        msg = await self.safe_send_message(message.channel, embed=status_embed("?"))
         diff = int((datetime.now().microsecond - start)/1000)
-        await self.safe_edit_message(msg, ":ok_hand: {} ms ping in {} servers!".format(diff, servers))
+        await self.safe_edit_message(msg, embed=status_embed(diff))
 
     async def skill_reddit(self, message, *, multireddit=None):
         if multireddit is None:
@@ -300,9 +317,7 @@ class GlyphBot(discord.Client):
         self.update_server_count()
         for server in self.servers:
             self.configs.update({server: serverconfig.Config(server)})
-        servers = len(self.servers)
-        members = len(list(self.get_all_members()))
-        log.info("Connected to {} server(s) with {} users.".format(servers, members))
+        log.info("Connected to {} server(s) with {} users.".format(self.total_servers(), self.total_members()))
 
     async def on_message(self, message):
         # Don't talk to yourself
