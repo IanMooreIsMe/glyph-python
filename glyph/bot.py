@@ -301,7 +301,7 @@ class GlyphBot(discord.Client):
         for server in self.servers:
             self.configs.update({server: serverconfig.Config(server)})
         servers = len(self.servers)
-        members = len(self.get_all_members())
+        members = len(list(self.get_all_members()))
         log.info("Connected to {} server(s) with {} users.".format(servers, members))
 
     async def on_message(self, message):
