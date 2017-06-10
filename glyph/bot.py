@@ -246,17 +246,32 @@ class GlyphBot(discord.Client):
         def status_embed(ping):
             servers = humanize.intcomma(self.total_servers())
             members = humanize.intcomma(self.total_members())
+            messages = len(self.messages)
             memory = psutil.virtual_memory()
-            total_memory = humanize.naturalsize(memory.total)
-            used_memory = humanize.naturalsize(memory.used)
+            memory_total = humanize.naturalsize(memory.total)
+            memory_used = humanize.naturalsize(memory.used)
+            memory_percent = memory.percent
             cpu_percent = psutil.cpu_percent()
+            disk_total = humanize.naturalsize(psutil.disk_usage("/").total)
+            disk_used = humanize.naturalsize(psutil.disk_usage("/").used)
+            disk_percent = psutil.disk_usage("/").percent
+            uptime = datetime.now() - datetime.fromtimestamp(psutil.boot_time())
+            uptime_message = "{} days".format(uptime.days)
             embed = discord.Embed(title="Glyph Status",
-                                  description="**Ping** {} ms\n\n"
-                                              "**Servers** {}\n**Members** {}\n\n"
-                                              "**Memory** {}/{} ({}%)\n**CPU** {}%".format(
-                                                ping,
-                                                servers, members,
-                                                used_memory, total_memory, memory.percent, cpu_percent))
+                                  description="**Discord Info**\n"
+                                              "\t**Ping** {} ms\n"
+                                              "\t**Servers** {}\n"
+                                              "\t**Members** {}\n"
+                                              "\t**Messages** {}\n\n"
+                                              "**Stack Info**\n"
+                                              "\t**Memory** {}/{} ({}%)\n"
+                                              "\t**CPU** {}%\n"
+                                              "\t**Disk** {}/{} ({}%)\n"
+                                              "\t**Uptime** {}".format(
+                                                ping, servers, members, messages,
+                                                memory_used, memory_total, memory_percent, cpu_percent,
+                                                disk_used, disk_total, disk_percent, uptime_message),
+                                  timestamp=datetime.now())
             return embed
         start = datetime.now().microsecond
         msg = await self.safe_send_message(message.channel, embed=status_embed("?"))
@@ -439,7 +454,7 @@ class GlyphBot(discord.Client):
         config = self.configs.get(server)
         if config.getboolean("auditing", "leaves"):
             await self.auditor.audit(member.server, auditing.MEMBER_LEAVE,
-                                 "{} left the server.".format(member.mention), user=member)
+                                     "{} left the server.".format(member.mention), user=member)
         # invite = self.create_invite(member.server).url
         # await self.safe_send_message(member, "Did you leave {} by accident?
         #                                       Here's a reinvite: {}".format(member.server, invite))
