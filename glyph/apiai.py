@@ -23,6 +23,7 @@ class AIResponse(object):
         self.actions = response["result"]["action"].split(".")
         self.action_incomplete = bool(response["result"]["actionIncomplete"])
         self.parameters = response["result"]["parameters"]
+        self.contexts = response["result"]["contexts"]
         self.response = response["result"]["fulfillment"]["speech"]
 
     def get_parameter(self, parameter, *, fallback=None):

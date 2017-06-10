@@ -402,7 +402,10 @@ class GlyphBot(discord.Client):
                 pass
 
             action = ai.get_action_depth(0)
-            if action == "skill" and not ai.action_incomplete:
+            if "ignore" in str(ai.contexts) and not ai.get_action_depth(1) == "insult":
+                await self.safe_send_message(message.channel,
+                                             "No {}, I'm done helping you for now.".format(message.author.mention))
+            elif action == "skill" and not ai.action_incomplete:
                 skill = ai.get_action_depth(1)
                 subskill = ai.get_action_depth(2)
                 if skill == "wiki":
