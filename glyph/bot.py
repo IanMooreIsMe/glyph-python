@@ -8,6 +8,7 @@ from os import environ
 import discord
 import humanize
 import praw
+import prawcore
 import psutil
 import requests
 import wikia
@@ -283,6 +284,8 @@ class GlyphBot(discord.Client):
             await self.safe_send_message(message.channel, "I think you wanted an image from Reddit, "
                                                           "but I'm not sure of what. Sorry.")
             return
+        subreddit = self.reddit.submission(multireddit)
+        print(subreddit)
         try:
             while True:  # Get an image that can be embedded
                 try:
@@ -295,7 +298,9 @@ class GlyphBot(discord.Client):
             embed = discord.Embed(title=submission.title, url=submission.shortlink)
             embed.set_image(url=submission.url)
             await self.safe_send_message(message.channel, embed=embed, removable=True)
-        except praw.exceptions.ClientException:
+        except prawcore.NotFound:
+            await self.safe_send_message(message.channel, "Sorry, I can't find `{}` photos.".format(multireddit))
+        except prawcore.PrawcoreException:
             await self.safe_send_message(message.channel, "Sorry, I had an issue communicating with Reddit.")
 
     async def skill_help(self, message):
