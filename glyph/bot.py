@@ -12,6 +12,7 @@ import prawcore
 import psutil
 import requests
 import wikia
+from praw import exceptions
 
 from . import apiai
 from . import auditing
@@ -284,23 +285,21 @@ class GlyphBot(discord.Client):
             await self.safe_send_message(message.channel, "I think you wanted an image from Reddit, "
                                                           "but I'm not sure of what. Sorry.")
             return
-        subreddit = self.reddit.submission(multireddit)
-        print(subreddit)
         try:
-            while True:  # Get an image that can be embedded
+            for i in range(1, 20):  # Get an image that can be embedded
                 try:
                     submission = self.reddit.subreddit(multireddit).random()
-                except TypeError:
+                except prawcore.NotFound:
                     continue
                 if any(extension in submission.url for extension in [".png", ".jpg", ".jpeg", ".gif"]) \
                         and submission.score > 10:
+                    embed = discord.Embed(title=submission.title, url=submission.shortlink)
+                    embed.set_image(url=submission.url)
+                    await self.safe_send_message(message.channel, embed=embed, removable=True)
                     break
-            embed = discord.Embed(title=submission.title, url=submission.shortlink)
-            embed.set_image(url=submission.url)
-            await self.safe_send_message(message.channel, embed=embed, removable=True)
-        except prawcore.NotFound:
-            await self.safe_send_message(message.channel, "Sorry, I can't find `{}` photos.".format(multireddit))
-        except prawcore.PrawcoreException:
+            else:
+                await self.safe_send_message(message.channel, "Sorry, I took too long to try to find an image.")
+        except praw.exceptions.ClientException:
             await self.safe_send_message(message.channel, "Sorry, I had an issue communicating with Reddit.")
 
     async def skill_help(self, message):
