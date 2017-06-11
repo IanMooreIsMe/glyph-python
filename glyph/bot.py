@@ -289,7 +289,7 @@ class GlyphBot(discord.Client):
             for i in range(1, 20):  # Get an image that can be embedded
                 try:
                     submission = self.reddit.subreddit(multireddit).random()
-                except prawcore.NotFound:
+                except TypeError:
                     continue
                 if any(extension in submission.url for extension in [".png", ".jpg", ".jpeg", ".gif"]) \
                         and submission.score > 10:
@@ -299,6 +299,8 @@ class GlyphBot(discord.Client):
                     break
             else:
                 await self.safe_send_message(message.channel, "Sorry, I took too long to try to find an image.")
+        except prawcore.NotFound:
+            await self.safe_send_message(message.channel, "Sorry, I can not find photos for `{}`.".format(multireddit))
         except praw.exceptions.ClientException:
             await self.safe_send_message(message.channel, "Sorry, I had an issue communicating with Reddit.")
 
