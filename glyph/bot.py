@@ -287,12 +287,16 @@ class GlyphBot(discord.Client):
             await self.safe_send_message(message.channel, "I think you wanted an image from Reddit, "
                                                           "but I'm not sure of what. Sorry.")
             return
-        nswf_subreddit = self.reddit.subreddit(multireddit).over18
-        if nswf_subreddit:
-            await self.safe_send_message(message.channel,
-                                         "<:xmark:314349398824058880> "
-                                         "I am forbidden to show  NSFW content from `{}`.".format(multireddit))
-            return
+        try:
+            for subreddit in multireddit.split("+"):
+                nswf_subreddit = self.reddit.subreddit(subreddit).over18
+                if nswf_subreddit:
+                    await self.safe_send_message(message.channel,
+                                                 "<:xmark:314349398824058880> "
+                                                 "I am forbidden to show  NSFW content from `{}`.".format(multireddit))
+                    return
+        except prawcore.NotFound:
+            pass
         # nswf_channel = False
         # try:
         #     if message.channel.adult:
