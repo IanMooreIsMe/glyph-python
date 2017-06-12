@@ -478,7 +478,7 @@ class GlyphBot(discord.Client):
                                                                          reaction.emoji,
                                                                          reaction.message.content),
                                      user=user)
-        if message.id in self.removable_messages:
+        if message.id in self.removable_messages and reaction.emoji == "\u274C":
             embed = discord.Embed(description=":x: Removed!", color=0xFF0000)
             await self.safe_edit_message(message, embed=embed, expire_time=5, clear_reactions=True)
             self.removable_messages.remove(message.id)
