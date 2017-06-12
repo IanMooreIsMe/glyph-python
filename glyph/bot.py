@@ -190,7 +190,8 @@ class GlyphBot(discord.Client):
 
     async def skill_change_role(self, message, roles, *, target_user=None, desired_role=None):
         if message.channel.is_private:  # You can't set a role, if you're not in a server
-            await self.safe_send_message(message.channel, "You must be in a server to set a role.")
+            await self.safe_send_message(message.channel, "<:xmark:314349398824058880> "
+                                                          "You must be in a server to set a role.")
             return
         if not target_user == message.author and not message.author.permissions_in(message.channel).manage_roles:
             await self.safe_send_message(message.channel,
@@ -229,7 +230,8 @@ class GlyphBot(discord.Client):
 
     async def skill_list_roles(self, message, roles):
         if message.channel.is_private:  # You can't list roles, if you're not in a server
-            await self.safe_send_message(message.channel, "You must be in a server to list roles.")
+            await self.safe_send_message(message.channel, "<:xmark:314349398824058880> "
+                                                          "You must be in a server to list roles.")
             return
         allowed_roles = list(filter(lambda x: x.name in roles, message.server.roles))
         if not allowed_roles:
@@ -285,6 +287,22 @@ class GlyphBot(discord.Client):
             await self.safe_send_message(message.channel, "I think you wanted an image from Reddit, "
                                                           "but I'm not sure of what. Sorry.")
             return
+        nswf_subreddit = self.reddit.subreddit(multireddit).over18
+        if nswf_subreddit:
+            await self.safe_send_message(message.channel,
+                                         "<:xmark:314349398824058880> "
+                                         "I am forbidden to show  NSFW content from `{}`.".format(multireddit))
+            return
+        # nswf_channel = False
+        # try:
+        #     if message.channel.adult:
+        #         nswf_channel = True
+        # except AttributeError:
+        #     pass
+        # if nswf_subreddit and not nswf_channel:
+        #     await self.safe_send_message(message.channel, "You must be in a NSFW channel "
+        #                                                   "to view NSFW images from `{}`".format(multireddit))
+        #     return
         try:
             for i in range(1, 20):  # Get an image that can be embedded
                 try:
@@ -479,7 +497,7 @@ class GlyphBot(discord.Client):
                                                                          reaction.message.content),
                                      user=user)
         if message.id in self.removable_messages and reaction.emoji == "\u274C":
-            embed = discord.Embed(description=":x: Removed!", color=0xFF0000)
+            embed = discord.Embed(description="<:xmark:314349398824058880> Removed!", color=0xFF0000)
             await self.safe_edit_message(message, embed=embed, expire_time=5, clear_reactions=True)
             self.removable_messages.remove(message.id)
         # removable = False
