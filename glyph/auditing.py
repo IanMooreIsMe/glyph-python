@@ -36,6 +36,7 @@ class Auditor(object):
         log_channel = discord.utils.get(server.channels, name=config.get("auditing", "channel"))
         if log_channel is not None:
             embed = discord.Embed(description=message, color=audit_type.color, timestamp=datetime.now())
+            embed.set_footer(text="Auditing")
             if user is not None:
                 embed.set_author(name=audit_type.title, icon_url=user.avatar_url)
             await self.bot.safe_send_message(log_channel, embed=embed)

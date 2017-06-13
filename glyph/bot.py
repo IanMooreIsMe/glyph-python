@@ -3,7 +3,7 @@ import logging
 import re
 from datetime import datetime
 from json.decoder import JSONDecodeError
-from os import environ
+from os import environ, getpid
 
 import discord
 import humanize
@@ -248,6 +248,9 @@ class GlyphBot(discord.Client):
 
     async def skill_status(self, message):
         def status_embed(ping):
+            process = psutil.Process(getpid())
+            last_restart_timedelta = datetime.now() - datetime.fromtimestamp(process.create_time())
+            last_restart = humanize.naturaltime(last_restart_timedelta)
             servers = humanize.intcomma(self.total_servers())
             members = humanize.intcomma(self.total_members())
             messages = len(self.messages)
@@ -261,21 +264,15 @@ class GlyphBot(discord.Client):
             disk_percent = psutil.disk_usage("/").percent
             uptime = datetime.now() - datetime.fromtimestamp(psutil.boot_time())
             uptime_message = "{} days".format(uptime.days)
-            embed = discord.Embed(title="Glyph Status",
-                                  description="**Discord Info**\n"
-                                              "\t**Ping** {} ms\n"
-                                              "\t**Servers** {}\n"
-                                              "\t**Members** {}\n"
-                                              "\t**Messages** {}\n\n"
-                                              "**Stack Info**\n"
-                                              "\t**Memory** {}/{} ({}%)\n"
-                                              "\t**CPU** {}%\n"
-                                              "\t**Disk** {}/{} ({}%)\n"
-                                              "\t**Uptime** {}".format(
-                                                ping, servers, members, messages,
-                                                memory_used, memory_total, memory_percent, cpu_percent,
-                                                disk_used, disk_total, disk_percent, uptime_message),
-                                  timestamp=datetime.now())
+            embed = discord.Embed(title="Glyph Status", timestamp=datetime.now())
+            embed.add_field(name="Discord Info",
+                            value="**Ping** {} ms\n**Servers** {}\n**Members** {}\n"
+                                  "**Messages** {}".format(ping, servers, members, messages))
+            embed.add_field(name="Stack Info",
+                            value="**Memory** {}/{} ({}%)\n**CPU** {}%\n**Disk** {}/{} ({}%)\n**Uptime** {}".format(
+                                memory_used, memory_total, memory_percent, cpu_percent,
+                                disk_used, disk_total, disk_percent, uptime_message))
+            embed.set_footer(text="Ready since {}!".format(last_restart))
             return embed
         start = datetime.now().microsecond
         msg = await self.safe_send_message(message.channel, embed=status_embed("?"))
@@ -293,7 +290,7 @@ class GlyphBot(discord.Client):
                 if nswf_subreddit:
                     await self.safe_send_message(message.channel,
                                                  "<:xmark:314349398824058880> "
-                                                 "I am forbidden to show  NSFW content from `{}`.".format(multireddit))
+                                                 "I am forbidden to show NSFW content from `{}`.".format(multireddit))
                     return
         except prawcore.NotFound:
             pass
