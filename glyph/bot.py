@@ -258,21 +258,22 @@ class GlyphBot(discord.Client):
             memory_total = humanize.naturalsize(memory.total)
             memory_used = humanize.naturalsize(memory.used)
             memory_percent = memory.percent
+            cpu_count = psutil.cpu_count()
             cpu_percent = psutil.cpu_percent()
             disk_total = humanize.naturalsize(psutil.disk_usage("/").total)
             disk_used = humanize.naturalsize(psutil.disk_usage("/").used)
             disk_percent = psutil.disk_usage("/").percent
             uptime = datetime.now() - datetime.fromtimestamp(psutil.boot_time())
-            uptime_message = "{} days".format(uptime.days)
             embed = discord.Embed(title="Glyph Status", timestamp=datetime.now())
             embed.add_field(name="Discord Info",
                             value="**Ping** {} ms\n**Servers** {}\n**Members** {}\n"
                                   "**Messages** {}".format(ping, servers, members, messages))
             embed.add_field(name="Stack Info",
-                            value="**Memory** {}/{} ({}%)\n**CPU** {}%\n**Disk** {}/{} ({}%)\n**Uptime** {}".format(
-                                memory_used, memory_total, memory_percent, cpu_percent,
-                                disk_used, disk_total, disk_percent, uptime_message))
-            embed.set_footer(text="Ready since {}!".format(last_restart))
+                            value="**Memory** {}/{} ({}%)\n**CPU** {}-cores at {}% utilization\n"
+                                  "**Disk** {}/{} ({}%)\n**Uptime** {} days".format(
+                                memory_used, memory_total, memory_percent, cpu_count, cpu_percent,
+                                disk_used, disk_total, disk_percent, uptime.days))
+            embed.set_footer(text="Last restarted {}".format(last_restart))
             return embed
         start = datetime.now().microsecond
         msg = await self.safe_send_message(message.channel, embed=status_embed("?"))
