@@ -264,7 +264,7 @@ class GlyphBot(discord.Client):
             disk_used = humanize.naturalsize(psutil.disk_usage("/").used)
             disk_percent = psutil.disk_usage("/").percent
             uptime = datetime.now() - datetime.fromtimestamp(psutil.boot_time())
-            embed = discord.Embed(title="Glyph Status", timestamp=datetime.now())
+            embed = discord.Embed(title="Glyph Status", timestamp=datetime.fromtimestamp(process.create_time()))
             embed.add_field(name="Discord Info",
                             value="**Ping** {} ms\n**Servers** {}\n**Members** {}\n"
                                   "**Messages** {}".format(ping, servers, members, messages))
