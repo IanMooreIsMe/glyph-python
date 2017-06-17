@@ -1,6 +1,7 @@
-import requests
 import json
 import re
+
+import requests
 from discord import Embed
 
 
@@ -49,8 +50,7 @@ class Submission(object):
                             self.species, self.gender,
                             self.favorites, self.comments, self.views),
                         url=self.link, color=self.color)
-        embed.set_footer(text="React \u274C to delete this. "
-                              "React \U0001F48C to receive full size image in a DM.")
+        # embed.set_footer(text="React \U0001F48C to receive full size image in a DM.")
         if thumbnail:
             download = self.download
             embed.set_thumbnail(url=download)

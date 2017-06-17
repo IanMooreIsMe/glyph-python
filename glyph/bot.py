@@ -7,18 +7,15 @@ from os import environ, getpid
 
 import discord
 import humanize
-import praw
-import prawcore
 import psutil
 import requests
-import wikia
-from praw import exceptions
 
 from . import apiai
 from . import auditing
 from . import fa
 from . import picarto
 from . import serverconfig
+from . import skills
 
 log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
@@ -36,9 +33,6 @@ class GlyphBot(discord.Client):
         self.removable_messages = []
         self.total_members = lambda: sum(1 for i in self.get_all_members())
         self.total_servers = lambda: len(self.servers)
-        self.reddit = praw.Reddit(client_id=environ.get("REDDIT_CLIENT_ID"),
-                                  client_secret=environ.get("REDDIT_SECRET"),
-                                  user_agent=environ.get("REDDIT_USER_AGENT"))
         super().__init__()
 
     def update_server_count(self):
@@ -94,7 +88,10 @@ class GlyphBot(discord.Client):
             log.error("A message needs to have content!")
             return None
         elif embed is not None and removable and not expire_time:
-                embed.set_footer(text="React \u274C to delete this.")
+            if embed.footer.text is not discord.Embed.Empty:
+                embed.set_footer(text="React \u274C to remove. {}".format(embed.footer.text))
+            else:
+                embed.set_footer(text="React \u274C to remove.")
         msg = None
         try:
             msg = await self.send_message(destination, content, embed=embed)
@@ -166,86 +163,6 @@ class GlyphBot(discord.Client):
             log.warning("{}: Cannot remove roles, no permission?".format(member.server))
             return False
 
-    async def skill_wiki(self, message, *, wiki=None, query=None):
-        if wiki is None:
-            await self.safe_send_message(message.channel, "Sorry, no valid wiki is set.", expire_time=5)
-            return
-        if query is None:
-            await self.safe_send_message(message.channel, "Sorry, I couldn't find a search query.", expire_time=5)
-            return
-        try:
-            search = wikia.search(wiki, query)
-            page = wikia.page(wiki, search[0])
-            url = page.url.replace(" ", "_")
-            embed = discord.Embed(title=page.title, url=url, description=page.summary)
-            try:
-                embed.set_thumbnail(url=page.images[0])
-            except (IndexError, AttributeError):
-                pass
-            await self.safe_send_message(message.channel, embed=embed, removable=True)
-        except (ValueError, wikia.wikia.WikiaError):
-            await self.safe_send_message(message.channel,
-                                         "Sorry, I have no information for your search query `{}`.".format(query),
-                                         expire_time=5)
-
-    async def skill_change_role(self, message, roles, *, target_user=None, desired_role=None):
-        if message.channel.is_private:  # You can't set a role, if you're not in a server
-            await self.safe_send_message(message.channel, "<:xmark:314349398824058880> "
-                                                          "You must be in a server to set a role.")
-            return
-        if not target_user == message.author and not message.author.permissions_in(message.channel).manage_roles:
-            await self.safe_send_message(message.channel,
-                                         "You don't have permission to set {}'s role.".format(target_user.name))
-            return
-        if desired_role is None:
-            await self.safe_send_message(message.channel,
-                                         "Sorry, I can not seem to find a desired role in your message.")
-            return
-        # TODO: Check permissions and improve safe remove and add permissions
-        allowed_roles = list(filter(lambda x: x.name.lower() in map(str.lower, roles), message.server.roles))
-        try:
-            new_role = list(filter(lambda x: x.name.lower() == desired_role.lower(), message.server.roles))[0]
-        except IndexError:
-            new_role = None
-        if not allowed_roles:
-            await self.safe_send_message(message.channel, "Sorry, but this server has no available roles configured.")
-        elif new_role is None or new_role not in allowed_roles:
-            await self.safe_send_message(message.channel,
-                                         "Sorry, but `{}` is not an available role.".format(desired_role))
-            await self.skill_list_roles(message, roles)
-        else:
-            await self.safe_remove_roles(target_user, *allowed_roles)  # Remove all old roles
-            await asyncio.sleep(.2)  # Wait because of rate limiting
-            role_set = await self.safe_add_roles(target_user, new_role)  # Add the new role
-            if role_set:
-                role_change_message = "{} you are now a {}!".format(target_user.mention, new_role.mention)
-                role_change_embed = discord.Embed(
-                    title="Poof!", description=role_change_message, colour=0x42F465)
-                role_change_embed.set_thumbnail(url=target_user.avatar_url)
-                await self.safe_send_message(message.channel, embed=role_change_embed)
-            else:
-                await self.safe_send_message(message.channel,
-                                             "Sorry, I can not assign the role `{}`.".format(desired_role))
-                await self.skill_list_roles(message, roles)
-
-    async def skill_list_roles(self, message, roles):
-        if message.channel.is_private:  # You can't list roles, if you're not in a server
-            await self.safe_send_message(message.channel, "<:xmark:314349398824058880> "
-                                                          "You must be in a server to list roles.")
-            return
-        allowed_roles = list(filter(lambda x: x.name in roles, message.server.roles))
-        if not allowed_roles:
-            await self.safe_send_message(message.channel, "Sorry, but {} has no "
-                                                          "available roles configured.".format(message.server.name))
-        else:
-            friendly_available_roles = ""
-            for role in allowed_roles:
-                friendly_available_roles += ("{}\n".format(role.mention))
-            embed = discord.Embed(title="Available Roles",
-                                  description=friendly_available_roles,
-                                  timestamp=datetime.now())
-            await self.safe_send_message(message.channel, embed=embed)
-
     async def skill_status(self, message):
         def status_embed(ping):
             process = psutil.Process(getpid())
@@ -279,50 +196,6 @@ class GlyphBot(discord.Client):
         msg = await self.safe_send_message(message.channel, embed=status_embed("?"))
         diff = int((datetime.now().microsecond - start)/1000)
         await self.safe_edit_message(msg, embed=status_embed(diff))
-
-    async def skill_reddit(self, message, *, multireddit=None):
-        if multireddit is None:
-            await self.safe_send_message(message.channel, "I think you wanted an image from Reddit, "
-                                                          "but I'm not sure of what. Sorry.")
-            return
-        try:
-            for subreddit in multireddit.split("+"):
-                nswf_subreddit = self.reddit.subreddit(subreddit).over18
-                if nswf_subreddit:
-                    await self.safe_send_message(message.channel,
-                                                 "<:xmark:314349398824058880> "
-                                                 "I am forbidden to show NSFW content from `{}`.".format(multireddit))
-                    return
-        except prawcore.NotFound:
-            pass
-        # nswf_channel = False
-        # try:
-        #     if message.channel.adult:
-        #         nswf_channel = True
-        # except AttributeError:
-        #     pass
-        # if nswf_subreddit and not nswf_channel:
-        #     await self.safe_send_message(message.channel, "You must be in a NSFW channel "
-        #                                                   "to view NSFW images from `{}`".format(multireddit))
-        #     return
-        try:
-            for i in range(1, 20):  # Get an image that can be embedded
-                try:
-                    submission = self.reddit.subreddit(multireddit).random()
-                except TypeError:
-                    continue
-                if any(extension in submission.url for extension in [".png", ".jpg", ".jpeg", ".gif"]) \
-                        and submission.score > 10:
-                    embed = discord.Embed(title=submission.title, url=submission.shortlink)
-                    embed.set_image(url=submission.url)
-                    await self.safe_send_message(message.channel, embed=embed, removable=True)
-                    break
-            else:
-                await self.safe_send_message(message.channel, "Sorry, I took too long to try to find an image.")
-        except prawcore.NotFound:
-            await self.safe_send_message(message.channel, "Sorry, I can not find photos for `{}`.".format(multireddit))
-        except praw.exceptions.ClientException:
-            await self.safe_send_message(message.channel, "Sorry, I had an issue communicating with Reddit.")
 
     async def skill_help(self, message):
         help_embed = discord.Embed(
@@ -366,7 +239,6 @@ class GlyphBot(discord.Client):
             return
         server = message.server
         config = self.configs.get(server)
-
         # Check for spoilery words
         if config.getboolean("spoilers", "enabled"):
             spoilers_channel = config.get("spoilers", "channel")
@@ -388,6 +260,7 @@ class GlyphBot(discord.Client):
                         await self.safe_send_message(message.channel, embed=embed, removable=True)
                     except ValueError:
                         pass
+            return
         # Picarto QuickView
         r = picarto.Channel.regex
         if r.search(message.clean_content) and config.getboolean("Picarto QuickView", "enabled"):
@@ -400,65 +273,77 @@ class GlyphBot(discord.Client):
                     await self.safe_send_message(message.channel, embed=embed, removable=True)
                 except ValueError:
                     pass
+            return
         # Check if the message should be replied to
-        if (self.user in message.mentions or message.channel.type is discord.ChannelType.private) \
-                and message.clean_content:  # Make sure message isn't empty
-            await self.safe_send_typing(message.channel)
+        if self.user in message.mentions or message.channel.is_private:
+            # Get the member of the bot so the mention can be removed from the message
             try:
                 member = discord.utils.get(message.server.members, id=self.user.id)
                 if member is None:
                     member = self.user
             except AttributeError:
                 member = self.user
+            # Check it the mention is at the beginning of the message and don't reply if not
+            if not message.clean_content.startswith("@{}".format(member.display_name)) and not message.channel.is_private:
+                return
+            # Start by typing to indicate processing a successful message
+            await self.safe_send_typing(message.channel)
+            # Remove the mention from the message so it can be processed right
             clean_message = re.sub("@{}".format(member.display_name), "", message.clean_content).strip()
+            if not clean_message:  # If there's no message
+                await self.safe_send_message(message.channel, "You have to say something.")
+                return
+            # Remove self from the list of mentions in the message
             clean_mentions = message.mentions
             try:
                 clean_mentions.remove(member)
             except ValueError:
                 pass
-
-            ai = None
+            # Ask api.ai how to handle the message
             try:
                 ai = self.apiai.query(clean_message, message.author.id)
-            except JSONDecodeError:
+            except JSONDecodeError:  # api.ai is down
                 await self.safe_send_message(message.channel, "Sorry, it appears api.ai is currently unavailable.\n"
                                                               "Please try again later.")
                 return
-            except KeyError:
-                pass
-
+            # Do the action given by api.ai
             action = ai.get_action_depth(0)
-            if "ignore" in str(ai.contexts) and not ai.get_action_depth(1) == "insult":
+            if "ignore" in str(ai.contexts) and not ai.get_action_depth(1) == "insult":  # If ignoring the user
                 await self.safe_send_message(message.channel,
                                              "No {}, I'm done helping you for now.".format(message.author.mention))
-            elif action == "skill" and not ai.action_incomplete:
+            elif action == "skill" and not ai.action_incomplete:  # If not ignoring the user and no follow up intent
                 skill = ai.get_action_depth(1)
                 subskill = ai.get_action_depth(2)
                 if skill == "wiki":
                     query = ai.get_parameter("search_query")
                     wiki = config.get("wiki", "wiki")
-                    await self.skill_wiki(message, query=query, wiki=wiki)
+                    await skills.wiki(self, message, query=query, wiki=wiki)
                 elif skill == "help":
                     await self.skill_help(message)
                 elif skill == "role":
+                    allowed_roles = config.get("roles", "allowed").split(",")
                     if subskill == "set":
                         desired_role = ai.get_parameter("role")
                         try:
                             target_user = clean_mentions[0]
                         except IndexError:
                             target_user = message.author
-                        await self.skill_change_role(message, config.get("roles", "allowed").split(","),
-                                                     desired_role=desired_role, target_user=target_user)
+                        await skills.change_role(self, message, target_user, desired_role, allowed_roles)
                     elif subskill == "list":
-                        await self.skill_list_roles(message, config.get("roles", "allowed").split(","))
+                        await skills.list_roles(self, message, allowed_roles)
                 elif skill == "status":
                     await self.skill_status(message)
                 elif skill == "reddit":
                     multireddit = ai.get_parameter("multireddit")
-                    await self.skill_reddit(message, multireddit=multireddit)
-                # elif skill == "moderation":
-                #   if subskill == "kick":
-                #     await self.skill_kick(message, wit)
+                    await skills.reddit_image(self, message, multireddit=multireddit)
+                elif skill == "moderation":
+                    if subskill == "kick":
+                        try:
+                            target_user = clean_mentions[0]
+                        except IndexError:
+                            await self.safe_send_message(message.channel, "Sorry, can't find a user to kick.")
+                            return
+                        await self.skill_kick(message, target_user)
             else:
                 await self.safe_send_message(message.channel, ai.response)
 
