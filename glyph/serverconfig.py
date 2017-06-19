@@ -27,3 +27,8 @@ class Config(object):
 
     def getboolean(self, section, option):
         return self.config.getboolean(section, option)
+
+    def getlist(self, section, option, *, delimiter=","):
+        raw_list = self.get(section, option).split(delimiter)
+        cleaned_list = list(map(str.strip, raw_list))
+        return cleaned_list

@@ -229,8 +229,8 @@ class GlyphBot(discord.Client):
         log.info("Logged in as {} ({})".format(self.user.name, self.user.id))
         await self.change_presence(game=discord.Game(name="Armax Arsenal Arena"))
         self.update_server_count()
-        for server in self.servers:
-            self.configs.update({server: serverconfig.Config(server)})
+        # for server in self.servers:
+        #     self.configs.update({server: serverconfig.Config(server)})
         log.info("Connected to {} server(s) with {} users.".format(self.total_servers(), self.total_members()))
 
     async def on_message(self, message):
@@ -238,13 +238,16 @@ class GlyphBot(discord.Client):
         if message.author == self.user or message.author.bot:
             return
         server = message.server
-        config = self.configs.get(server)
+        config = self.configs.get(server, False)
+        if not config:
+            self.configs.update({server: serverconfig.Config(server)})
+            config = self.configs.get(server)
         # Check for spoilery words
         if config.getboolean("spoilers", "enabled"):
             spoilers_channel = config.get("spoilers", "channel")
-            spoilers_keywords = config.get("spoilers", "keywords").split(",")
-            if any(word in message.clean_content.lower() for word in spoilers_keywords) \
-                    and not (message.channel.name == spoilers_channel):
+            spoilers_keywords = set(config.getlist("spoilers", "keywords"))
+            split_message = set(map(str.lower, re.findall(r"[\w']+", message.clean_content)))
+            if spoilers_keywords.intersection(split_message) and not (message.channel.name == spoilers_channel):
                 await self.add_reaction(message, "\u26A0")  # React with a warning emoji
         # FA QuickView
         r = fa.Submission.regex
@@ -321,7 +324,7 @@ class GlyphBot(discord.Client):
                 elif skill == "help":
                     await self.skill_help(message)
                 elif skill == "role":
-                    allowed_roles = config.get("roles", "allowed").split(",")
+                    allowed_roles = config.getlist("roles", "allowed")
                     if subskill == "set":
                         desired_role = ai.get_parameter("role")
                         try:
@@ -447,10 +450,12 @@ class GlyphBot(discord.Client):
             color = 0xFF0000  # Red
             if config.parsing_status == "Okay":
                 color = 0x00FF00  # Green
-            embed = discord.Embed(title="Configuration Parsing Status",
-                                  description=config.parsing_status,
-                                  timestamp=datetime.now(), color=color)
-
+            # diff = difflib.unified_diff(before.topic.splitlines(1), after.topic.splitlines(1))
+            # diff_string = "".join(diff)
+            embed = discord.Embed(title="Configuration Updated", timestamp=datetime.now(), color=color)
+            embed.add_field(name="Parsing Status", value=config.parsing_status)
+            # embed.add_field(name="Changes", value=diff_string) TODO: Make more understandable
+            embed.set_footer(text="Configuration")
             await self.safe_send_message(after, embed=embed)
             log.info("{}: Configuration updated.".format(server))
 

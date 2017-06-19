@@ -36,8 +36,9 @@ async def change_role(bot, message, target_user, desired_role, allowed_roles):
         if role_set:
             role_change_message = "{} you are now a {}!".format(target_user.mention, new_role.mention)
             role_change_embed = discord.Embed(
-                title="Poof!", description=role_change_message, colour=0x42F465)
+                title="Poof!", description=role_change_message, colour=0x42F465, timestamp=datetime.now())
             role_change_embed.set_thumbnail(url=target_user.avatar_url)
+            role_change_embed.set_footer(text="Roles Skill")
             await bot.safe_send_message(message.channel, embed=role_change_embed)
         else:
             await bot.safe_send_message(message.channel,
