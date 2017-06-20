@@ -7,3 +7,4 @@ wikia==1.4.3
 humanize
 psutil
 pillow
+pytz

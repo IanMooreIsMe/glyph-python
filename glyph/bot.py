@@ -181,7 +181,7 @@ class GlyphBot(discord.Client):
             disk_used = humanize.naturalsize(psutil.disk_usage("/").used)
             disk_percent = psutil.disk_usage("/").percent
             uptime = datetime.now() - datetime.fromtimestamp(psutil.boot_time())
-            embed = discord.Embed(title="Glyph Status", timestamp=datetime.fromtimestamp(process.create_time()))
+            embed = discord.Embed(title="Glyph Status", timestamp=datetime.utcfromtimestamp(process.create_time()))
             embed.add_field(name="Discord Info",
                             value="**Ping** {} ms\n**Servers** {}\n**Members** {}\n"
                                   "**Messages** {}".format(ping, servers, members, messages))
@@ -339,6 +339,10 @@ class GlyphBot(discord.Client):
                 elif skill == "reddit":
                     multireddit = ai.get_parameter("multireddit")
                     await skills.reddit_image(self, message, multireddit=multireddit)
+                elif skill == "time":
+                    timezone = ai.get_parameter("timezone")
+                    embed = skills.get_time_embed(timezone)
+                    await self.safe_send_message(message.channel, embed=embed)
                 elif skill == "moderation":
                     if subskill == "kick":
                         try:
@@ -452,7 +456,7 @@ class GlyphBot(discord.Client):
                 color = 0x00FF00  # Green
             # diff = difflib.unified_diff(before.topic.splitlines(1), after.topic.splitlines(1))
             # diff_string = "".join(diff)
-            embed = discord.Embed(title="Configuration Updated", timestamp=datetime.now(), color=color)
+            embed = discord.Embed(title="Configuration Updated", timestamp=datetime.utcnow(), color=color)
             embed.add_field(name="Parsing Status", value=config.parsing_status)
             # embed.add_field(name="Changes", value=diff_string) TODO: Make more understandable
             embed.set_footer(text="Configuration")
