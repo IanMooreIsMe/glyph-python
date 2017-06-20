@@ -44,6 +44,8 @@ async def reddit_image(bot, message, *, multireddit=None):
                     and submission.score > 10 and not submission.over_18:
                 embed = discord.Embed(title=submission.title, url=submission.shortlink)
                 embed.set_image(url=submission.url)
+                try_subreddit = reddit.subreddit("popular").random().subreddit.display_name
+                embed.set_footer(text="Try asking \"r/{}\"".format(try_subreddit))
                 await bot.safe_send_message(message.channel, embed=embed, removable=True)
                 break
         else:

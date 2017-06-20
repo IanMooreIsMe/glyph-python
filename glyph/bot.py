@@ -89,9 +89,9 @@ class GlyphBot(discord.Client):
             return None
         elif embed is not None and removable and not expire_time:
             if embed.footer.text is not discord.Embed.Empty:
-                embed.set_footer(text="React \u274C to remove. {}".format(embed.footer.text))
+                embed.set_footer(text="React \u274C to remove | {}".format(embed.footer.text))
             else:
-                embed.set_footer(text="React \u274C to remove.")
+                embed.set_footer(text="React \u274C to remove")
         msg = None
         try:
             msg = await self.send_message(destination, content, embed=embed)

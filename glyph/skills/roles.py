@@ -1,4 +1,5 @@
 import asyncio
+import random
 from datetime import datetime
 
 import discord
@@ -58,9 +59,10 @@ async def list_roles(bot, message, roles):
     else:
         friendly_available_roles = ""
         for role in allowed_roles:
-            friendly_available_roles += ("{}\n".format(role.mention))
+            friendly_available_roles += ("**{}** - {}\n".format(role.name, role.mention))
         embed = discord.Embed(title="Available Roles",
                               description=friendly_available_roles,
                               timestamp=datetime.now())
-        embed.set_footer(text="Roles Skill")
+        try_role = random.choice(allowed_roles)
+        embed.set_footer(text="Roles Skill | Try asking \"Set me as {}\"".format(try_role))
         await bot.safe_send_message(message.channel, embed=embed)
