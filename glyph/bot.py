@@ -110,6 +110,8 @@ class GlyphBot(discord.Client):
 
     async def safe_edit_message(self, message, new=None, *,
                                 embed=None, expire_time=0, clear_reactions=False, removable=False):
+        if message is None:
+            return
         if embed is not None and removable:
             embed.set_footer(text="React \u274C to delete this.")
         msg = None
@@ -229,8 +231,19 @@ class GlyphBot(discord.Client):
         log.info("Logged in as {} ({})".format(self.user.name, self.user.id))
         await self.change_presence(game=discord.Game(name="Armax Arsenal Arena"))
         self.update_server_count()
-        # for server in self.servers:
-        #     self.configs.update({server: serverconfig.Config(server)})
+        farm_count = 0
+        for server in self.servers:
+            total_members = len(server.members)
+            total_bots = len(list(filter(lambda member: member.bot, server.members)))
+            total_humans = total_members - total_bots
+            percentage_bots = round(total_bots/total_members*100, 2)
+            if percentage_bots > 80 and total_members > 15:
+                farm_count += 1
+                log.info("{}: Left server! Was {}% likely to be a bot farm with {} members, "
+                         "{} humans and {} bots!".format(
+                            server.name, percentage_bots, total_members, total_humans, total_bots))
+                self.leave_server(server)
+        log.info("Left {} bot farm server(s).".format(farm_count))
         log.info("Connected to {} server(s) with {} users.".format(self.total_servers(), self.total_members()))
 
     async def on_message(self, message):
@@ -372,7 +385,10 @@ class GlyphBot(discord.Client):
 
     async def on_member_remove(self, member):
         server = member.server
-        config = self.configs.get(server)
+        config = self.configs.get(server, False)
+        if not config:
+            self.configs.update({server: serverconfig.Config(server)})
+            config = self.configs.get(server)
         if config.getboolean("auditing", "leaves"):
             await self.auditor.audit(member.server, auditing.MEMBER_LEAVE,
                                      "{} left the server.".format(member.mention), user=member)
@@ -382,7 +398,10 @@ class GlyphBot(discord.Client):
 
     async def on_reaction_add(self, reaction, user):
         server = reaction.message.server
-        config = self.configs.get(server)
+        config = self.configs.get(server, False)
+        if not config:
+            self.configs.update({server: serverconfig.Config(server)})
+            config = self.configs.get(server)
         message = reaction.message
         if config.getboolean("auditing", "reactions"):
             await self.auditor.audit(server, auditing.REACTION_ADD,
@@ -419,7 +438,10 @@ class GlyphBot(discord.Client):
 
     async def on_reaction_remove(self, reaction, user):
         server = reaction.message.server
-        config = self.configs.get(server)
+        config = self.configs.get(server, False)
+        if not config:
+            self.configs.update({server: serverconfig.Config(server)})
+            config = self.configs.get(server)
         if config.getboolean("auditing", "reactions"):
             await self.auditor.audit(server, auditing.REACTION_REMOVE,
                                      "{} removed reaction {} from {}".format(user.mention,
