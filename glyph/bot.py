@@ -30,6 +30,7 @@ class GlyphBot(discord.Client):
         self.auditor = auditing.Auditor(self)
         self.apiai = apiai.AIProcessor(client_access_token=environ.get("APIAI_TOKEN"))
         self.configs = {None: serverconfig.Config()}  # Set up for DMs
+        self.farm_servers = []
         self.removable_messages = []
         self.total_members = lambda: sum(1 for i in self.get_all_members())
         self.total_servers = lambda: len(self.servers)
@@ -230,20 +231,20 @@ class GlyphBot(discord.Client):
     async def on_ready(self):
         log.info("Logged in as {} ({})".format(self.user.name, self.user.id))
         await self.change_presence(game=discord.Game(name="Armax Arsenal Arena"))
-        self.update_server_count()
-        farm_count = 0
-        for server in self.servers:
+        for server in list(self.servers):
             total_members = len(server.members)
             total_bots = len(list(filter(lambda member: member.bot, server.members)))
             total_humans = total_members - total_bots
             percentage_bots = round(total_bots/total_members*100, 2)
             if percentage_bots > 80 and total_members > 15:
-                farm_count += 1
+                self.farm_servers.append(server)
                 log.info("{}: Left server! Was {}% likely to be a bot farm with {} members, "
                          "{} humans and {} bots!".format(
                             server.name, percentage_bots, total_members, total_humans, total_bots))
-                self.leave_server(server)
-        log.info("Left {} bot farm server(s).".format(farm_count))
+                await asyncio.sleep(2)  # Wait because of rate limiting
+                await self.leave_server(server)
+        log.info("Left {} bot farm server(s).".format(len(self.farm_servers)))
+        self.update_server_count()
         log.info("Connected to {} server(s) with {} users.".format(self.total_servers(), self.total_members()))
 
     async def on_message(self, message):
@@ -454,6 +455,8 @@ class GlyphBot(discord.Client):
         self.update_server_count()
 
     async def on_server_remove(self, server):
+        if server in self.farm_servers:
+            return
         self.configs.pop(server)
         log.info("{}: Removed from server.".format(server))
         self.update_server_count()
