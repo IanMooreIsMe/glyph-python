@@ -253,7 +253,10 @@ class GlyphBot(discord.Client):
         if message.author == self.user or message.author.bot:
             return
         server = message.server
-        config = self.configs.get(server)
+        config = self.configs.get(server, False)
+        if not config:
+            self.configs.update({server: serverconfig.Config(server)})
+            config = self.configs.get(server)
         # Check for spoilery words
         if config.getboolean("spoilers", "enabled"):
             spoilers_channel = config.get("spoilers", "channel")
