@@ -232,6 +232,7 @@ class GlyphBot(discord.Client):
         log.info("Logged in as {} ({})".format(self.user.name, self.user.id))
         await self.change_presence(game=discord.Game(name="Armax Arsenal Arena"))
         for server in list(self.servers):
+            self.configs.update({server: serverconfig.Config(server)})
             total_members = len(server.members)
             total_bots = len(list(filter(lambda member: member.bot, server.members)))
             total_humans = total_members - total_bots
@@ -252,10 +253,7 @@ class GlyphBot(discord.Client):
         if message.author == self.user or message.author.bot:
             return
         server = message.server
-        config = self.configs.get(server, False)
-        if not config:
-            self.configs.update({server: serverconfig.Config(server)})
-            config = self.configs.get(server)
+        config = self.configs.get(server)
         # Check for spoilery words
         if config.getboolean("spoilers", "enabled"):
             spoilers_channel = config.get("spoilers", "channel")
@@ -386,10 +384,7 @@ class GlyphBot(discord.Client):
 
     async def on_member_remove(self, member):
         server = member.server
-        config = self.configs.get(server, False)
-        if not config:
-            self.configs.update({server: serverconfig.Config(server)})
-            config = self.configs.get(server)
+        config = self.configs.get(server)
         if config.getboolean("auditing", "leaves"):
             await self.auditor.audit(member.server, auditing.MEMBER_LEAVE,
                                      "{} left the server.".format(member.mention), user=member)
@@ -399,10 +394,7 @@ class GlyphBot(discord.Client):
 
     async def on_reaction_add(self, reaction, user):
         server = reaction.message.server
-        config = self.configs.get(server, False)
-        if not config:
-            self.configs.update({server: serverconfig.Config(server)})
-            config = self.configs.get(server)
+        config = self.configs.get(server)
         message = reaction.message
         if config.getboolean("auditing", "reactions"):
             await self.auditor.audit(server, auditing.REACTION_ADD,
@@ -439,10 +431,7 @@ class GlyphBot(discord.Client):
 
     async def on_reaction_remove(self, reaction, user):
         server = reaction.message.server
-        config = self.configs.get(server, False)
-        if not config:
-            self.configs.update({server: serverconfig.Config(server)})
-            config = self.configs.get(server)
+        config = self.configs.get(server)
         if config.getboolean("auditing", "reactions"):
             await self.auditor.audit(server, auditing.REACTION_REMOVE,
                                      "{} removed reaction {} from {}".format(user.mention,
