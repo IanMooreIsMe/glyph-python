@@ -113,8 +113,11 @@ class GlyphBot(discord.Client):
                                 embed=None, expire_time=0, clear_reactions=False, removable=False):
         if message is None:
             return
-        if embed is not None and removable:
-            embed.set_footer(text="React \u274C to delete this.")
+        elif embed is not None and removable and not expire_time:
+            if embed.footer.text is not discord.Embed.Empty:
+                embed.set_footer(text="React \u274C to remove | {}".format(embed.footer.text))
+            else:
+                embed.set_footer(text="React \u274C to remove")
         msg = None
         if clear_reactions:
             try:
@@ -126,7 +129,9 @@ class GlyphBot(discord.Client):
 
             if msg and expire_time:
                 await asyncio.sleep(expire_time)
-                await self.safe_delete_message(msg)
+                await self.delete_message(msg)
+            elif msg and removable:
+                self.removable_messages.append(msg.id)
         except discord.NotFound:
             log.warning("Cannot edit message \"{}\", message not found".format(message.clean_content))
 
@@ -139,6 +144,17 @@ class GlyphBot(discord.Client):
             log.warning("Cannot delete message \"{}\", no permission?".format(message.clean_content))
         except discord.NotFound:
             log.warning("Cannot delete message \"{}\", invalid channel?".format(message.clean_content))
+
+    async def safe_purge_from(self, channel, *, limit=100, check=None, before=None, after=None, around=None):
+        dels = None
+        try:
+            dels = await self.purge_from(channel, limit=limit, check=check, before=before, after=after, around=around)
+        except discord.Forbidden:
+            log.warning("{} - {}: Cannot purge messages, no permission?".format(channel.server, channel.name))
+        except discord.NotFound:
+            log.warning("{} - {}: Cannot purge messages, invalid channel?".format(channel.server, channel.name))
+
+        return dels
 
     async def safe_kick(self, member):
         kick = None
@@ -366,6 +382,8 @@ class GlyphBot(discord.Client):
                             await self.safe_send_message(message.channel, "Sorry, can't find a user to kick.")
                             return
                         await self.skill_kick(message, target_user)
+                    elif subskill == "purge":
+                        await skills.purge(self, message, ai.get_parameter("text_time"))
             else:
                 await self.safe_send_message(message.channel, ai.response)
 

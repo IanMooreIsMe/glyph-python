@@ -1,3 +1,4 @@
+from .moderation import purge
 from .reddit import reddit_image
 from .roles import change_role, list_roles
 from .time import get_time_embed
