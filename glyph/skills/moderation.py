@@ -6,7 +6,6 @@ import humanize
 
 
 async def purge(bot, message, duration):
-    print(duration)
     channel = message.channel
     if not message.author.permissions_in(channel).manage_messages and not message.channel.is_private:
         await bot.safe_send_message(channel, "You don't have permission to purge messages!")
@@ -52,7 +51,7 @@ async def purge(bot, message, duration):
         return
     embed = discord.Embed(title="Purging",
                           description="<:empty:314349398723264512> "
-                                      "Purging everything since {}.".format(humanize.naturaltime(time)),
+                                      "Purging everything since ~{}.".format(humanize.naturaltime(time)),
                           timestamp=datetime.now())
     embed.set_footer(text="Moderation Skill")
     status = await bot.safe_send_message(channel, embed=embed)
@@ -60,7 +59,7 @@ async def purge(bot, message, duration):
     if deleted:
         embed = discord.Embed(title="Purge Successful",
                               description="<:check:314349398811475968> "
-                                          "Purged {} messages from {}.".format(len(deleted), humanize.naturaltime(time)),
+                                          "Purged {} messages from ~{}.".format(len(deleted), humanize.naturaltime(time)),
                               timestamp=datetime.now())
         embed.set_footer(text="Moderation Skill")
         await bot.safe_edit_message(status, embed=embed)
