@@ -1,15 +1,8 @@
-Unlike traditional bots, __I technically do not use commands__.
-Instead, you can ask me to do what you want by @mentioning me and then writing your message, and if I know how to do it, I will do it.
+Hey {USER}, I am **Glyph**!
+A **constantly evolving** and **learning** Discord bot created by Throudin#4867.
 
-**Example Messages**
-*Show me a some dank memes* (a meme will be grabbed from Reddit and shown)
-*Set me as Turian* (if the server has cosmetic roles, the one you request will be applied)
+I use **natural language** to process requests you give to me to the best of my current learned ability.
 
-**Other Features**
-*Messages that contain keywords for spoilers (as defined by the server) will reacted to with a warning if not in the appropriate text channels.*
-*Links to submissions on Furaffinity will result in a quick stats overview being posted (includes rating, favorites, etc.)*
+To see what I can do, be sure to check out the [**full skills list**] and **suggest new ones** you'd like to see, in the official server.
 
-I am constantly evolving, [learning](https://api.ai/), and having more features being added.
-Be sure to check out the full skills list and suggest new ones you'd like to see, in the official server.
-
-[Full Skills List](https://glyph-discord.readthedocs.io/en/latest/skills.html) - [Official Glyph Server](https://discord.me/glyph-discord) - [Add Me To Your Server](https://discordapp.com/oauth2/authorize?client_id=248186527161516032&scope=bot&permissions=268722273)
+[Full Skills List](https://glyph-discord.readthedocs.io/en/latest/skills.html) - [Official Glyph Server](https://discord.me/glyph-discord) - [Add Me To Your Server](http://glyph-discord.rtfd.io/invite)

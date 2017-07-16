@@ -18,5 +18,5 @@ def get_time_embed(timezone=None):
         pass
     embed = discord.Embed(title=title, description=time.strftime("**%H:%M:%S** on %A %B %d %Y"))
     try_tz = random.choice(pytz.common_timezones)
-    embed.set_footer(text="Time Skill | Try asking \"{} time\"".format(try_tz))
+    embed.set_footer(text="Time | Try asking \"{} time\"".format(try_tz))
     return embed

@@ -217,13 +217,11 @@ class GlyphBot(discord.Client):
         await self.safe_edit_message(msg, embed=status_embed(diff))
 
     async def skill_help(self, message):
-        help_embed = discord.Embed(
+        embed = discord.Embed(
             title="Glyph Help",
             description=self.get_config_message("help", message.author, message.server),
             colour=0x4286F4)
-        await self.safe_send_message(message.author, embed=help_embed)
-        if message.channel.type is not discord.ChannelType.private:
-            await self.safe_send_message(message.channel, "Sending you a PM now.", expire_time=5)
+        await self.safe_send_message(message.channel, embed=embed)
 
     async def skill_kick(self, message, wit, *, member=None):
         if message.channel.is_private:
