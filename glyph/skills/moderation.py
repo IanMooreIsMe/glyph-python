@@ -46,27 +46,28 @@ async def purge(bot, message, duration):
                               description="<:xmark:314349398824058880> "
                                           "You can only bulk delete messages that are under 14 days old.",
                               timestamp=datetime.now())
-        embed.set_footer(text="Moderation Skill | Try asking \"purge 14d\"")
+        embed.set_footer(text="Moderation | Try asking \"purge 14d\"")
         await bot.safe_send_message(channel, embed=embed)
         return
     embed = discord.Embed(title="Purging",
                           description="<:empty:314349398723264512> "
-                                      "Purging everything since ~{}.".format(humanize.naturaltime(time)),
+                                      "Purging everything since {}.".format(humanize.naturaltime(time)),
                           timestamp=datetime.now())
-    embed.set_footer(text="Moderation Skill")
+    embed.set_footer(text="Moderation")
     status = await bot.safe_send_message(channel, embed=embed)
-    deleted = await bot.safe_purge_from(channel, limit=5000, after=time, check=lambda msg: msg.id != status.id)
+    deleted = await bot.safe_purge_from(channel, limit=100000, after=time, check=lambda msg: msg.id != status.id)
     if deleted:
         embed = discord.Embed(title="Purge Successful",
                               description="<:check:314349398811475968> "
-                                          "Purged {} messages from ~{}.".format(len(deleted), humanize.naturaltime(time)),
+                                          "Purged {} messages since {}.".format(len(deleted), humanize.naturaltime(time)),
                               timestamp=datetime.now())
-        embed.set_footer(text="Moderation Skill")
+        embed.set_footer(text="Moderation")
         await bot.safe_edit_message(status, embed=embed)
     else:
         embed = discord.Embed(title="Purge Failed",
-                              description="<:xmark:314349398824058880> I don't have Manage Messages permission!",
+                              description="<:xmark:314349398824058880> Either I was given an invalid duration or "
+                                          "I don't have Manage Messages permission!",
                               timestamp=datetime.now())
-        embed.set_footer(text="Moderation Skill | Try granting Manage Messages to Glyph")
+        embed.set_footer(text="Moderation")
         await bot.safe_edit_message(status, embed=embed)
     return
