@@ -36,7 +36,7 @@ class GlyphBot(discord.Client):
         self.total_servers = lambda: len(self.servers)
         super().__init__()
 
-    def update_server_count(self):
+    async def update_server_count(self):
         count = len(self.servers)
         # Discord Bot List
         url = "https://discordbots.org/api/bots/{}/stats".format(self.user.id)
@@ -261,7 +261,7 @@ class GlyphBot(discord.Client):
                 await asyncio.sleep(2)  # Wait because of rate limiting
                 await self.leave_server(server)
         log.info("Left {} bot farm server(s).".format(len(self.farm_servers)))
-        self.update_server_count()
+        await self.update_server_count()
         log.info("Connected to {} server(s) with {} users.".format(self.total_servers(), self.total_members()))
 
     async def on_message(self, message):
@@ -462,14 +462,14 @@ class GlyphBot(discord.Client):
     async def on_server_join(self, server):
         self.configs.update({server: serverconfig.Config(server)})
         log.info("{}: Added to server.".format(server))
-        self.update_server_count()
+        await self.update_server_count()
 
     async def on_server_remove(self, server):
         if server in self.farm_servers:
             return
         self.configs.pop(server)
         log.info("{}: Removed from server.".format(server))
-        self.update_server_count()
+        await self.update_server_count()
 
     async def on_channel_create(self, channel):
         if channel.name == "glyph":
