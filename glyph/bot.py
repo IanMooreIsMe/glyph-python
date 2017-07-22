@@ -367,7 +367,7 @@ class GlyphBot(discord.Client):
                     await self.skill_status(message)
                 elif skill == "reddit":
                     multireddit = ai.get_parameter("multireddit")
-                    await skills.reddit_image(self, message, multireddit=multireddit)
+                    await skills.RedditSkill(self).send_image(message, multireddit=multireddit)
                 elif skill == "time":
                     timezone = ai.get_parameter("timezone")
                     embed = skills.get_time_embed(timezone)
