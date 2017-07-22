@@ -7,8 +7,11 @@ import humanize
 
 async def purge(bot, message, duration):
     channel = message.channel
-    if not message.author.permissions_in(channel).manage_messages and not message.channel.is_private:
+    if not message.author.permissions_in(channel).manage_messages and not channel.is_private:
         await bot.safe_send_message(channel, "You don't have permission to purge messages!")
+        return
+    if channel.is_private:
+        await bot.safe_send_message(channel, "Sorry, I can not purge messages in a DM")
         return
 
     def text_to_time(text):
