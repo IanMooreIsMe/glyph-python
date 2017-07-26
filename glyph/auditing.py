@@ -1,6 +1,7 @@
 from _datetime import datetime
 
 import discord
+import humanize
 
 from . import serverconfig
 
@@ -35,10 +36,11 @@ class Auditor(object):
         config = serverconfig.Config(server)  # TODO: Use dictionary
         log_channel = discord.utils.get(server.channels, name=config.get("auditing", "channel"))
         if log_channel is not None:
-            embed = discord.Embed(description=message, color=audit_type.color, timestamp=datetime.utcnow())
+            embed = discord.Embed(title=audit_type.title, description=message,
+                                  color=audit_type.color, timestamp=datetime.utcnow())
             embed.set_footer(text="Auditing")
             if user is not None:
-                embed.set_author(name=audit_type.title, icon_url=user.avatar_url)
+                embed.set_thumbnail(url=user.avatar_url)
             await self.bot.safe_send_message(log_channel, embed=embed)
         else:
             glyph_channel = discord.utils.get(server.channels, name="glyph")
@@ -47,3 +49,10 @@ class Auditor(object):
                                                  "**Config Error**\n```"
                                                  "Auditing channel '{}' not found!```".format(config.get("auditing",
                                                                                                          "channel")))
+
+    @staticmethod
+    def get_user_info(member):
+        created_at_delta = datetime.utcnow() - member.created_at
+        created_at_humanized = humanize.naturaltime(created_at_delta)
+        return "**User** {}\n**ID** {}\n**Mention** {}\n**Created** {}\n**Bot** {}".format(
+            member, member.id, member.mention, created_at_humanized, member.bot)

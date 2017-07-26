@@ -260,7 +260,7 @@ class GlyphBot(discord.Client):
                 await self.leave_server(server)
         log.info("Left {} bot farm server(s).".format(len(self.farm_servers)))
         await self.update_server_count()
-        log.info("Connected to {} server(s) with {} users.".format(self.total_servers(), self.total_members()))
+        log.info("Connected to {} server(s) with {} members.".format(self.total_servers(), self.total_members()))
 
     async def on_message(self, message):
         # Don't talk to yourself
@@ -389,8 +389,7 @@ class GlyphBot(discord.Client):
         server = member.server
         config = self.configs.get(server)
         if config.getboolean("auditing", "joins"):
-            await self.auditor.audit(server, auditing.MEMBER_JOIN,
-                                     "{} joined the server.".format(member.mention), user=member)
+            await self.auditor.audit(server, auditing.MEMBER_JOIN, self.auditor.get_user_info(member), user=member)
         if config.getboolean("welcome", "announce_in_server"):
             await self.safe_send_message(server.default_channel, "Welcome {}!".format(member.mention))
         # if welcomed:
@@ -405,8 +404,7 @@ class GlyphBot(discord.Client):
         server = member.server
         config = self.configs.get(server)
         if config.getboolean("auditing", "leaves"):
-            await self.auditor.audit(member.server, auditing.MEMBER_LEAVE,
-                                     "{} left the server.".format(member.mention), user=member)
+            await self.auditor.audit(server, auditing.MEMBER_LEAVE, self.auditor.get_user_info(member), user=member)
         # invite = self.create_invite(member.server).url
         # await self.safe_send_message(member, "Did you leave {} by accident?
         #                                       Here's a reinvite: {}".format(member.server, invite))

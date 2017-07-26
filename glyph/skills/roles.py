@@ -29,13 +29,13 @@ async def change_role(bot, message, target_user, desired_role, allowed_roles):
     elif new_role is None or new_role not in allowed_roles:
         await bot.safe_send_message(message.channel,
                                     "Sorry, but `{}` is not an available role.".format(desired_role))
-        await bot.skill_list_roles(message, allowed_roles)
+        # await list_roles(bot, message, allowed_roles)  # TODO: Fix
     else:
         await bot.safe_remove_roles(target_user, *allowed_roles)  # Remove all old roles
         await asyncio.sleep(.2)  # Wait because of rate limiting
         role_set = await bot.safe_add_roles(target_user, new_role)  # Add the new role
         if role_set:
-            role_change_message = "{} you are now a {}!".format(target_user.mention, new_role.mention)
+            role_change_message = "{} you are now a {}!".format(target_user.name, new_role.name)
             role_change_embed = discord.Embed(
                 title="Poof!", description=role_change_message, colour=0x42F465, timestamp=datetime.now())
             role_change_embed.set_thumbnail(url=target_user.avatar_url)
@@ -44,7 +44,7 @@ async def change_role(bot, message, target_user, desired_role, allowed_roles):
         else:
             await bot.safe_send_message(message.channel,
                                         "Sorry, I can not assign the role `{}`.".format(desired_role))
-            await bot.skill_list_roles(message, allowed_roles)
+            # await list_roles(bot, message, allowed_roles)
 
 
 async def list_roles(bot, message, roles):
