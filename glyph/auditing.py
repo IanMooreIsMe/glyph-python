@@ -54,5 +54,8 @@ class Auditor(object):
     def get_user_info(member):
         created_at_delta = datetime.utcnow() - member.created_at
         created_at_humanized = humanize.naturaltime(created_at_delta)
-        return "**User** {}\n**ID** {}\n**Mention** {}\n**Created** {}\n**Bot** {}".format(
-            member, member.id, member.mention, created_at_humanized, member.bot)
+        bot = ""
+        if member.bot:
+            bot = "<:botTag:230105988211015680>"
+        return "**User** {} {}\n**ID** {}\n**Mention** {}\n**Created** {}".format(
+            member, bot, member.id, member.mention, created_at_humanized, member.bot)
