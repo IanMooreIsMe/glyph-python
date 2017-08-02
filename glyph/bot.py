@@ -30,7 +30,7 @@ class GlyphBot(discord.Client):
     def __init__(self):
         self.auditor = auditing.Auditor(self)
         self.apiai = apiai.AIProcessor(client_access_token=environ.get("APIAI_TOKEN"))
-        self.langBot = apiai.AIProcessor(client_access_token="1f342872c2d64e54ae303078576531b1")  # client
+        self.langBot = apiai.AIProcessor(client_access_token=environ.get("APIAI_LANGBOT_TOKEN"))
         self.configs = {None: serverconfig.Config()}  # Set up for DMs
         self.farm_servers = []
         self.removable_messages = []
@@ -276,7 +276,7 @@ class GlyphBot(discord.Client):
         # Submit data to langBot
         if config.getboolean("langBot", "enabled"):
             try:
-                self.langBot.query(message.clean_content, message.author.id)
+                self.langBot.query(message.clean_content, message.server.id)
             except (JSONDecodeError, KeyError):
                 pass
         # Check for spoilery words
@@ -493,12 +493,11 @@ class GlyphBot(discord.Client):
             color = 0xFF0000  # Red
             if config.parsing_status == "Okay":
                 color = 0x00FF00  # Green
-            # diff = difflib.unified_diff(before.topic.splitlines(1), after.topic.splitlines(1))
-            # diff_string = "".join(diff)
             embed = discord.Embed(title="Configuration Updated", timestamp=datetime.utcnow(), color=color)
             embed.add_field(name="Parsing Status", value=config.parsing_status)
-            embed.add_field(name="Previous", value=HasteBin(before.topic).post())
-            # embed.add_field(name="Changes", value=diff_string) TODO: Make more understandable
+            beforehaste = HasteBin().post(before.topic)
+            afterhaste = HasteBin().post(after.topic)
+            embed.add_field(name="History", value="**Before** {}\n**After** {}".format(beforehaste, afterhaste))
             embed.set_footer(text="Configuration")
             await self.safe_send_message(after, embed=embed)
             log.info("{}: Configuration updated.".format(server))
