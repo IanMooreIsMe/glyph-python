@@ -30,6 +30,7 @@ class GlyphBot(discord.Client):
     def __init__(self):
         self.auditor = auditing.Auditor(self)
         self.apiai = apiai.AIProcessor(client_access_token=environ.get("APIAI_TOKEN"))
+        self.langBot = apiai.AIProcessor(client_access_token="1f342872c2d64e54ae303078576531b1")  # client
         self.configs = {None: serverconfig.Config()}  # Set up for DMs
         self.farm_servers = []
         self.removable_messages = []
@@ -272,6 +273,12 @@ class GlyphBot(discord.Client):
         if not config:
             self.configs.update({server: serverconfig.Config(server)})
             config = self.configs.get(server)
+        # Submit data to langBot
+        if config.getboolean("langBot", "enabled"):
+            try:
+                self.langBot.query(message.clean_content, message.author.id)
+            except (JSONDecodeError, KeyError):
+                pass
         # Check for spoilery words
         if config.getboolean("spoilers", "enabled"):
             spoilers_channel = config.get("spoilers", "channel")
