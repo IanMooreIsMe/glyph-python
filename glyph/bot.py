@@ -16,6 +16,7 @@ from . import fa
 from . import picarto
 from . import serverconfig
 from . import skills
+from .haste import HasteBin
 
 log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
@@ -489,6 +490,7 @@ class GlyphBot(discord.Client):
             # diff_string = "".join(diff)
             embed = discord.Embed(title="Configuration Updated", timestamp=datetime.utcnow(), color=color)
             embed.add_field(name="Parsing Status", value=config.parsing_status)
+            embed.add_field(name="Previous", value=HasteBin(before.topic).post())
             # embed.add_field(name="Changes", value=diff_string) TODO: Make more understandable
             embed.set_footer(text="Configuration")
             await self.safe_send_message(after, embed=embed)

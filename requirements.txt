@@ -8,3 +8,4 @@ humanize
 psutil
 pillow
 pytz
+requests
