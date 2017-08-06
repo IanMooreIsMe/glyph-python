@@ -9,3 +9,4 @@ psutil
 pillow
 pytz
 requests
+wikipedia

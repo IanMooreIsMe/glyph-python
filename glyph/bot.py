@@ -34,6 +34,7 @@ class GlyphBot(discord.Client):
         self.configs = {None: serverconfig.Config()}  # Set up for DMs
         self.farm_servers = []
         self.removable_messages = []
+        self.deletewith_messages = {}
         self.total_members = lambda: sum(1 for i in self.get_all_members())
         self.total_servers = lambda: len(self.servers)
         super().__init__()
@@ -86,7 +87,8 @@ class GlyphBot(discord.Client):
         except discord.NotFound:
             log.warning("{} - {}: Cannot send typing, invalid channel?".format(destination.server, destination.name))
 
-    async def safe_send_message(self, destination, content=None, *, embed=None, expire_time=0, removable=False):
+    async def safe_send_message(self, destination, content=None, *, embed=None, expire_time=0, removable=False,
+                                deletewith=None):
         if content is None and embed is None:
             log.error("A message needs to have content!")
             return None
@@ -99,6 +101,8 @@ class GlyphBot(discord.Client):
         try:
             msg = await self.send_message(destination, content, embed=embed)
 
+            if msg and deletewith:
+                self.deletewith_messages.update({deletewith.id: msg})
             if msg and expire_time:
                 await asyncio.sleep(expire_time)
                 await self.delete_message(msg)
@@ -462,6 +466,13 @@ class GlyphBot(discord.Client):
                                      "{} removed reaction {} from {}".format(user.mention,
                                                                              reaction.emoji, reaction.message.content),
                                      user=user)
+
+    async def on_message_delete(self, message):
+        if message.id in self.deletewith_messages:
+            embed = discord.Embed(description="<:xmark:314349398824058880> Removed!", color=0xFF0000)
+            msg = self.deletewith_messages.get(message.id)
+            await self.safe_edit_message(msg, embed=embed, expire_time=5, clear_reactions=True)
+            self.deletewith_messages.pop(message.id)
 
     async def on_server_join(self, server):
         self.configs.update({server: serverconfig.Config(server)})
