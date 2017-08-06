@@ -22,18 +22,14 @@ class RedditSkill(object):
             return
         try:
             nsfw_subreddit = [s for s in multireddit.split("+") if self.r.subreddit(s).over18]
-        except prawcore.NotFound or prawcore.Redirect:
-            await self.bot.safe_send_message(message.channel, "You provided an unknown or invalid subreddit name.")
-            return
-        try:
-            nswf_channel = "nsfw" in message.channel.name
-        except TypeError:
-            nswf_channel = False
-        if nsfw_subreddit and not nswf_channel:
-            await self.bot.safe_send_message(message.channel, "You must be in a NSFW channel "
-                                                              "to view images from `{}`".format(multireddit))
-            return
-        try:
+            try:
+                nswf_channel = "nsfw" in message.channel.name
+            except TypeError:
+                nswf_channel = False
+            if nsfw_subreddit and not nswf_channel:
+                await self.bot.safe_send_message(message.channel, "You must be in a NSFW channel "
+                                                                  "to view images from `{}`".format(multireddit))
+                return
             for i in range(1, 20):  # Get an image that can be embedded
                 try:
                     submission = self.r.subreddit(multireddit).random()
@@ -51,7 +47,11 @@ class RedditSkill(object):
                     break
             else:
                 await self.bot.safe_send_message(message.channel, "Sorry, I took too long to try to find an image.")
-        except prawcore.NotFound:
-            await self.bot.safe_send_message(message.channel, "Sorry, I can not find photos for `{}`.".format(multireddit))
-        except praw.exceptions.ClientException:
+        except prawcore.NotFound or prawcore.Redirect:
+            await self.bot.safe_send_message(message.channel,
+                                             "You provided an unknown or invalid subreddit `{}`.".format(multireddit))
+        except prawcore.exceptions.Forbidden:
+            await self.bot.safe_send_message(message.channel, "Sorry, but `{}` is a private community and so "
+                                                              "I can not grab a photo from there.".format(multireddit))
+        except praw.exceptions.ClientException or praw.exceptions.APIException:
             await self.bot.safe_send_message(message.channel, "Sorry, I had an issue communicating with Reddit.")

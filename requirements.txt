@@ -2,7 +2,7 @@ configparser
 discord.py==0.16.8
 apiai
 numpy
-praw==4.5.1
+praw==5.0.1
 wikia==1.4.3
 humanize
 psutil
