@@ -1,3 +1,4 @@
+from datetime import datetime
 from os import environ
 
 import discord
@@ -39,11 +40,11 @@ class RedditSkill(object):
                     continue
                 elif any(extension in submission.url for extension in [".png", ".jpg", ".jpeg", ".gif"]) \
                         and submission.score > 10:
-                    embed = discord.Embed(title=submission.title, url=submission.shortlink)
+                    embed = discord.Embed(title=submission.title, url=submission.shortlink, timestamp=datetime.utcnow())
                     embed.set_image(url=submission.url)
-                    try_subreddit = self.r.subreddit("popular").random().subreddit.display_name
-                    embed.set_footer(text="Try asking \"r/{}\"".format(try_subreddit))
-                    await self.bot.safe_send_message(message.channel, embed=embed, removable=True)
+                    suggestion = self.r.subreddit("popular").random().subreddit.display_name
+                    embed.set_footer(text="r/{} | Try asking \"r/{}\"".format(submission.subreddit, suggestion))
+                    await self.bot.safe_send_message(message.channel, embed=embed, deletewith=message)
                     break
             else:
                 await self.bot.safe_send_message(message.channel, "Sorry, I took too long to try to find an image.")

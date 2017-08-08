@@ -10,12 +10,13 @@ async def wiki(bot, message, *, wiki=None, query=None):
         try:
             page = wikipedia.page(query)
             summary = wikipedia.summary(query, sentences=3)
-            embed = discord.Embed(title=page.title, url=page.url, description=summary,  timestamp=datetime.now())
+            embed = discord.Embed(title=page.title, url=page.url, description=summary,  timestamp=datetime.utcnow())
             try:
                 embed.set_thumbnail(url=page.images[0])
             except (IndexError, AttributeError):
                 pass
-            embed.set_footer(text="Wikipedia")
+            suggestion = wikipedia.random()
+            embed.set_footer(text="Wikipedia | Try asking \"What is {}?\"".format(suggestion))
             await bot.safe_send_message(message.channel, embed=embed, deletewith=message)
         except (ValueError, wikipedia.WikipediaException):
             await bot.safe_send_message(message.channel,
@@ -29,7 +30,7 @@ async def wiki(bot, message, *, wiki=None, query=None):
             search = wikia.search(wiki, query)
             page = wikia.page(wiki, search[0])
             url = page.url.replace(" ", "_")
-            embed = discord.Embed(title=page.title, url=url, description=page.summary, timestamp=datetime.now())
+            embed = discord.Embed(title=page.title, url=url, description=page.summary, timestamp=datetime.utcnow())
             try:
                 embed.set_thumbnail(url=page.images[0])
             except (IndexError, AttributeError):

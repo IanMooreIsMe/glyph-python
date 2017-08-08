@@ -46,31 +46,31 @@ async def purge(bot, message, duration):
     time, delta = text_to_time(duration)
     if delta.days > 14:
         embed = discord.Embed(title="Purge Failed",
-                              description="<:xmark:314349398824058880> "
+                              description="<:xmark:344316007164149770> "
                                           "You can only bulk delete messages that are under 14 days old.",
-                              timestamp=datetime.now())
+                              timestamp=datetime.utcnow())
         embed.set_footer(text="Moderation | Try asking \"purge 14d\"")
         await bot.safe_send_message(channel, embed=embed)
         return
     embed = discord.Embed(title="Purging",
-                          description="<:empty:314349398723264512> "
+                          description="<:empty:344316006438797314> "
                                       "Purging everything since {}.".format(humanize.naturaltime(time)),
-                          timestamp=datetime.now())
+                          timestamp=datetime.utcnow())
     embed.set_footer(text="Moderation")
     status = await bot.safe_send_message(channel, embed=embed)
     deleted = await bot.safe_purge_from(channel, limit=100000, after=time, check=lambda msg: msg.id != status.id)
     if deleted:
         embed = discord.Embed(title="Purge Successful",
-                              description="<:check:314349398811475968> "
+                              description="<:check:344316006040338434> "
                                           "Purged {} messages since {}.".format(len(deleted), humanize.naturaltime(time)),
-                              timestamp=datetime.now())
+                              timestamp=datetime.utcnow())
         embed.set_footer(text="Moderation")
         await bot.safe_edit_message(status, embed=embed)
     else:
         embed = discord.Embed(title="Purge Failed",
-                              description="<:xmark:314349398824058880> Either I was given an invalid duration or "
+                              description="<:xmark:344316007164149770> Either I was given an invalid duration or "
                                           "I don't have Manage Messages permission!",
-                              timestamp=datetime.now())
+                              timestamp=datetime.utcnow())
         embed.set_footer(text="Moderation")
         await bot.safe_edit_message(status, embed=embed)
     return

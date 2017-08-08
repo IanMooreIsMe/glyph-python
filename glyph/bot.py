@@ -301,7 +301,7 @@ class GlyphBot(discord.Client):
                     try:
                         submission = fa.Submission(id=link_id)
                         embed = submission.get_embed(thumbnail=config.getboolean("FA QuickView", "thumbnail"))
-                        await self.safe_send_message(message.channel, embed=embed, removable=True)
+                        await self.safe_send_message(message.channel, embed=embed, removewith=message)
                     except ValueError:
                         pass
             return
@@ -314,7 +314,7 @@ class GlyphBot(discord.Client):
                 try:
                     channel = picarto.Channel(name=link_name)
                     embed = channel.get_embed()
-                    await self.safe_send_message(message.channel, embed=embed, removable=True)
+                    await self.safe_send_message(message.channel, embed=embed, removewith=message)
                 except ValueError:
                     pass
             return
@@ -432,7 +432,7 @@ class GlyphBot(discord.Client):
                                                                          reaction.message.content),
                                      user=user)
         if message.id in self.removable_messages and reaction.emoji == "\u274C":
-            embed = discord.Embed(description="<:xmark:314349398824058880> Removed!", color=0xFF0000)
+            embed = discord.Embed(description="<:xmark:344316007164149770> Removed!", color=0xFF0000)
             await self.safe_edit_message(message, embed=embed, expire_time=5, clear_reactions=True)
             self.removable_messages.remove(message.id)
         # removable = False
@@ -469,7 +469,7 @@ class GlyphBot(discord.Client):
 
     async def on_message_delete(self, message):
         if message.id in self.deletewith_messages:
-            embed = discord.Embed(description="<:xmark:314349398824058880> Removed!", color=0xFF0000)
+            embed = discord.Embed(description="<:xmark:344316007164149770> Removed!", color=0xFF0000)
             msg = self.deletewith_messages.get(message.id)
             await self.safe_edit_message(msg, embed=embed, expire_time=5, clear_reactions=True)
             self.deletewith_messages.pop(message.id)

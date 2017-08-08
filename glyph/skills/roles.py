@@ -7,7 +7,7 @@ import discord
 
 async def change_role(bot, message, target_user, desired_role, allowed_roles):
     if message.channel.is_private:  # You can't set a role, if you're not in a server
-        await bot.safe_send_message(message.channel, "<:xmark:314349398824058880> "
+        await bot.safe_send_message(message.channel, "<:xmark:344316007164149770> "
                                                      "You must be in a server to set a role.")
         return
     if not target_user == message.author and not message.author.permissions_in(message.channel).manage_roles:
@@ -49,7 +49,7 @@ async def change_role(bot, message, target_user, desired_role, allowed_roles):
 
 async def list_roles(bot, message, roles):
     if message.channel.is_private:  # You can't list roles, if you're not in a server
-        await bot.safe_send_message(message.channel, "<:xmark:314349398824058880> "
+        await bot.safe_send_message(message.channel, "<:xmark:344316007164149770> "
                                                      "You must be in a server to list roles.")
         return
     allowed_roles = list(filter(lambda x: x.name in roles, message.server.roles))
@@ -62,7 +62,7 @@ async def list_roles(bot, message, roles):
             friendly_available_roles += ("**{}** - {}\n".format(role.name, role.mention))
         embed = discord.Embed(title="Available Roles",
                               description=friendly_available_roles,
-                              timestamp=datetime.now())
+                              timestamp=datetime.utcnow())
         try_role = random.choice(allowed_roles)
         embed.set_footer(text="Roles Skill | Try asking \"Set me as {}\"".format(try_role))
         await bot.safe_send_message(message.channel, embed=embed)
