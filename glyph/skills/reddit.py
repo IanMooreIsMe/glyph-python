@@ -48,11 +48,11 @@ class RedditSkill(object):
                     break
             else:
                 await self.bot.safe_send_message(message.channel, "Sorry, I took too long to try to find an image.")
-        except prawcore.NotFound or prawcore.Redirect:
+        except (prawcore.exceptions.NotFound, prawcore.exceptions.Redirect):
             await self.bot.safe_send_message(message.channel,
                                              "You provided an unknown or invalid subreddit `{}`.".format(multireddit))
         except prawcore.exceptions.Forbidden:
             await self.bot.safe_send_message(message.channel, "Sorry, but `{}` is a private community and so "
                                                               "I can not grab a photo from there.".format(multireddit))
-        except praw.exceptions.ClientException or praw.exceptions.APIException:
+        except (praw.exceptions.ClientException, praw.exceptions.APIException):
             await self.bot.safe_send_message(message.channel, "Sorry, I had an issue communicating with Reddit.")
