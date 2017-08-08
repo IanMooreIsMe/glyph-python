@@ -301,7 +301,7 @@ class GlyphBot(discord.Client):
                     try:
                         submission = fa.Submission(id=link_id)
                         embed = submission.get_embed(thumbnail=config.getboolean("FA QuickView", "thumbnail"))
-                        await self.safe_send_message(message.channel, embed=embed, removewith=message)
+                        await self.safe_send_message(message.channel, embed=embed, deletewith=message)
                     except ValueError:
                         pass
             return
@@ -314,7 +314,7 @@ class GlyphBot(discord.Client):
                 try:
                     channel = picarto.Channel(name=link_name)
                     embed = channel.get_embed()
-                    await self.safe_send_message(message.channel, embed=embed, removewith=message)
+                    await self.safe_send_message(message.channel, embed=embed, deletewith=message)
                 except ValueError:
                     pass
             return
