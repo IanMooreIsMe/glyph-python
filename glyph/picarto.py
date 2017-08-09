@@ -1,8 +1,9 @@
-import requests
 import json
 import re
 import time
+from datetime import datetime
 
+import requests
 from discord import Embed
 
 
@@ -54,5 +55,6 @@ class Channel(object):
                         "{} | {} | Viewers: {}".format(
                             self.title,
                             self.status, self.adult, self.viewers, time.strftime("%H:%M:%S")),
-                        url=self.url, color=self.color)
+                        url=self.url, color=self.color, timestamp=datetime.now())
+        embed.set_footer(text="Picarto")
         return embed

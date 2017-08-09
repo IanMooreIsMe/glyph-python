@@ -1,5 +1,6 @@
 import json
 import re
+from datetime import datetime
 
 import requests
 from discord import Embed
@@ -49,8 +50,8 @@ class Submission(object):
                             self.rating, self.category, self.theme,
                             self.species, self.gender,
                             self.favorites, self.comments, self.views),
-                        url=self.link, color=self.color)
-        # embed.set_footer(text="React \U0001F48C to receive full size image in a DM.")
+                        url=self.link, color=self.color, timestamp=datetime.now())
+        embed.set_footer(text="FurAffinity")
         if thumbnail:
             download = self.download
             embed.set_thumbnail(url=download)
