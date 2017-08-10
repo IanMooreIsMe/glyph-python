@@ -251,8 +251,10 @@ class GlyphBot(discord.Client):
     async def on_ready(self):
         log.info("Logged in as {} ({})".format(self.user.name, self.user.id))
         await self.change_presence(game=discord.Game(name="Armax Arsenal Arena"))
+        configloader = serverconfig.DatabaseConfig()
+        configloader.open()
         for server in list(self.servers):
-            self.configs.update({server: serverconfig.Config(server)})
+            self.configs.update({server: configloader.load(server)})
             total_members = len(server.members)
             total_bots = len(list(filter(lambda member: member.bot, server.members)))
             total_humans = total_members - total_bots
@@ -264,6 +266,7 @@ class GlyphBot(discord.Client):
                             server.name, percentage_bots, total_members, total_humans, total_bots))
                 await asyncio.sleep(2)  # Wait because of rate limiting
                 await self.leave_server(server)
+        configloader.close()
         log.info("Left {} bot farm server(s).".format(len(self.farm_servers)))
         await self.update_server_count()
         log.info("Connected to {} server(s) with {} members.".format(self.total_servers(), self.total_members()))
