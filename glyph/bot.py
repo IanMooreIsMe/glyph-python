@@ -277,12 +277,6 @@ class GlyphBot(discord.Client):
         if not config:
             self.configs.update({server: serverconfig.Config(server)})
             config = self.configs.get(server)
-        # Submit data to langBot
-        if config.getboolean("langBot", "enabled"):
-            try:
-                self.langBot.query(message.clean_content, message.server.id)
-            except (JSONDecodeError, KeyError):
-                pass
         # Check for spoilery words
         if config.getboolean("spoilers", "enabled"):
             spoilers_channel = config.get("spoilers", "channel")
@@ -404,22 +398,12 @@ class GlyphBot(discord.Client):
             await self.auditor.audit(server, auditing.MEMBER_JOIN, self.auditor.get_user_info(member), user=member)
         if config.getboolean("welcome", "announce_in_server"):
             await self.safe_send_message(server.default_channel, "Welcome {}!".format(member.mention))
-        # if welcomed:
-        #     text = self.get_config_message("welcome", member, server)
-        #     welcome_embed = discord.Embed(
-        #         title="Welcome to {}!".format(server.name),
-        #         description=text,
-        #         colour=0x4286F4)
-        #     await self.safe_send_message(member, embed=welcome_embed)
 
     async def on_member_remove(self, member):
         server = member.server
         config = self.configs.get(server)
         if config.getboolean("auditing", "leaves"):
             await self.auditor.audit(server, auditing.MEMBER_LEAVE, self.auditor.get_user_info(member), user=member)
-        # invite = self.create_invite(member.server).url
-        # await self.safe_send_message(member, "Did you leave {} by accident?
-        #                                       Here's a reinvite: {}".format(member.server, invite))
 
     async def on_reaction_add(self, reaction, user):
         server = reaction.message.server
@@ -435,28 +419,6 @@ class GlyphBot(discord.Client):
             embed = discord.Embed(description="<:xmark:344316007164149770> Removed!", color=0xFF0000)
             await self.safe_edit_message(message, embed=embed, expire_time=5, clear_reactions=True)
             self.removable_messages.remove(message.id)
-        # removable = False
-        # is_fa_quickview = False
-        # if not reaction.message.author == self.user:
-        #     return
-        # try:
-        #     removable = ("React \u274C to delete this." in str(message.embeds[0]))
-        #     is_fa_quickview = ("React \U0001F48C to receive full size image in a DM." in str(message.embeds[0]))
-        # except IndexError:
-        #     pass
-        # if reaction.emoji == "\u274C" and removable:
-        #     embed = discord.Embed(description=":x: Removed!", color=0xFF0000)
-        #     await self.safe_edit_message(reaction.message, embed=embed, expire_time=5, clear_reactions=True)
-        # elif reaction.emoji == "\U0001F48C" and is_fa_quickview:
-        #     try:
-        #         embed = message.embeds[0]
-        #         submission = fa.Submission(url=embed['url'])
-        #         embed = discord.Embed(title=submission.title, url=submission.link, colour=submission.color)
-        #         embed.set_footer(text="React \u274C to delete this.")
-        #         embed.set_image(url=submission.download)
-        #         await self.safe_send_message(user, embed=embed)
-        #     except ValueError:
-        #         await self.safe_send_message(user, "Sorry, I failed to get the full sized image for you.")
 
     async def on_reaction_remove(self, reaction, user):
         server = reaction.message.server
