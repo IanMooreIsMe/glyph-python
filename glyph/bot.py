@@ -34,6 +34,7 @@ class GlyphBot(discord.Client):
         self.deletewith_messages = {}
         self.total_members = lambda: sum(1 for i in self.get_all_members())
         self.total_servers = lambda: len(self.servers)
+        self.ready = False
         super().__init__()
 
     async def update_server_count(self):
@@ -248,9 +249,7 @@ class GlyphBot(discord.Client):
     async def on_ready(self):
         log.info("Logged in as {} ({})".format(self.user.name, self.user.id))
         await self.change_presence(game=discord.Game(name="Armax Arsenal Arena"))
-        self.configdb.open()
         self.configdb.load_all()
-        self.configdb.close()
         farm_servers = []
         for server in list(self.servers):
             total_members = len(server.members)
@@ -267,15 +266,18 @@ class GlyphBot(discord.Client):
         log.info("Left {} bot farm server(s).".format(len(farm_servers)))
         await self.update_server_count()
         log.info("Connected to {} server(s) with {} members.".format(self.total_servers(), self.total_members()))
+        self.ready = True
 
     async def on_message(self, message):
+        if not self.ready:
+            return
         # Don't talk to yourself
         if message.author == self.user or message.author.bot:
             return
         server = message.server
         config = self.configdb.get(server)
         # Check for spoilery words
-        if not config.get("spoilers_keywords"):
+        if config.get("spoilers_keywords"):
             spoilers_channel = config.get("spoilers_channel")
             spoilers_keywords = set(map(lambda x: x.lower(), config.get("spoilers_keywords")))
             split_message = set(map(str.lower, re.findall(r"[\w']+", message.clean_content)))
@@ -394,19 +396,36 @@ class GlyphBot(discord.Client):
                                                      "You must be an administrator to modify this servers config!")
                         return
                     if subskill == "load":
-                        hasteregex = re.compile(r"hastebin.com\/(\w{10}).json")
+                        haste_regex = re.compile(r"hastebin.com\/(\w{10})")
                         try:
-                            hasteid = hasteregex.search(ai.get_parameter("url"))
-                            self.configdb.open()
-                            result = self.configdb.update(server.id, config.inhaste(hasteid.group(1)))
-                            self.configdb.close()
-                            await self.safe_send_message(message.channel, result)
+                            haste = haste_regex.search(ai.get_parameter("url"))
+                            result = self.configdb.inhaste(server, haste.group(1))
+                            if result == "Success!":
+                                embed = discord.Embed(title="Configuration Update Success",
+                                                      description="Successfully updated this servers configuration!",
+                                                      color=0x00FF00,
+                                                      timestamp=datetime.utcnow())
+                            else:
+                                embed = discord.Embed(title="Configuration Update Failure",
+                                                      description="This servers configuration failed to update for "
+                                                                  "the following reason(s)! Please check that you have "
+                                                                  "a properly formatted JSON and the data is "
+                                                                  "as expected.```{}```\n"
+                                                                  "**Help:** [Default Config]({}) "
+                                                                  "- [Official Glyph Server]"
+                                                                  "(https://discord.me/glyph-discord)".format(
+                                                          result, self.configdb.outhaste(0)),
+                                                      color=0xFF0000,
+                                                      timestamp=datetime.utcnow())
+                            embed.set_footer(text="Configuration")
+                            await self.safe_send_message(message.channel, embed=embed)
                         except KeyError:
                             await self.safe_send_message(message.channel,
                                                          "Sorry, but that url is wrong for me to load a config from.")
                     elif subskill == "view":
                         await self.safe_send_message(message.channel,
-                                                     "Here's the current config: {}".format(config.outhaste()))
+                                                     "Here's the current config: {}".format(
+                                                         self.configdb.outhaste(server)))
                 else:
                     await self.safe_send_message(message.channel, "<:confusablob:341765305711722496> Odd, "
                                                                   "you seem to have triggered a skill that "
@@ -462,9 +481,7 @@ class GlyphBot(discord.Client):
         await self.update_server_count()
 
     async def on_server_remove(self, server):
-        if server in self.farm_servers:
-            return
-        self.configs.pop(server)
+        self.configdb.delete(server.id)
         log.info("{}: Removed from server.".format(server))
         await self.update_server_count()
 
