@@ -14,9 +14,8 @@ from . import apiai
 from . import auditing
 from . import fa
 from . import picarto
-from . import serverconfig
 from . import skills
-from .haste import HasteBin
+from .serverconfig import ConfigDatabase
 
 log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
@@ -30,9 +29,7 @@ class GlyphBot(discord.Client):
     def __init__(self):
         self.auditor = auditing.Auditor(self)
         self.apiai = apiai.AIProcessor(client_access_token=environ.get("APIAI_TOKEN"))
-        self.langBot = apiai.AIProcessor(client_access_token=environ.get("APIAI_LANGBOT_TOKEN"))
-        self.configs = {None: serverconfig.Config()}  # Set up for DMs
-        self.farm_servers = []
+        self.configdb = ConfigDatabase(environ.get("DATABASE_URL"))
         self.removable_messages = []
         self.deletewith_messages = {}
         self.total_members = lambda: sum(1 for i in self.get_all_members())
@@ -251,23 +248,23 @@ class GlyphBot(discord.Client):
     async def on_ready(self):
         log.info("Logged in as {} ({})".format(self.user.name, self.user.id))
         await self.change_presence(game=discord.Game(name="Armax Arsenal Arena"))
-        configloader = serverconfig.DatabaseConfig()
-        configloader.open()
+        self.configdb.open()
+        self.configdb.load_all()
+        self.configdb.close()
+        farm_servers = []
         for server in list(self.servers):
-            self.configs.update({server: configloader.load(server)})
             total_members = len(server.members)
             total_bots = len(list(filter(lambda member: member.bot, server.members)))
             total_humans = total_members - total_bots
             percentage_bots = round(total_bots/total_members*100, 2)
             if percentage_bots > 80 and total_members > 15:
-                self.farm_servers.append(server)
+                farm_servers.append(server)
                 log.info("{}: Left server! Was {}% likely to be a bot farm with {} members, "
                          "{} humans and {} bots!".format(
                             server.name, percentage_bots, total_members, total_humans, total_bots))
                 await asyncio.sleep(2)  # Wait because of rate limiting
                 await self.leave_server(server)
-        configloader.close()
-        log.info("Left {} bot farm server(s).".format(len(self.farm_servers)))
+        log.info("Left {} bot farm server(s).".format(len(farm_servers)))
         await self.update_server_count()
         log.info("Connected to {} server(s) with {} members.".format(self.total_servers(), self.total_members()))
 
@@ -276,20 +273,11 @@ class GlyphBot(discord.Client):
         if message.author == self.user or message.author.bot:
             return
         server = message.server
-        config = self.configs.get(server, False)
-        if not config:
-            self.configs.update({server: serverconfig.Config(server)})
-            config = self.configs.get(server)
-        # Submit data to langBot
-        if config.get("langbot_training"):
-            try:
-                self.langBot.query(message.clean_content, message.server.id)
-            except (JSONDecodeError, KeyError):
-                pass
+        config = self.configdb.get(server)
         # Check for spoilery words
-        if config.get("spoilers_enabled"):
+        if not config.get("spoilers_keywords"):
             spoilers_channel = config.get("spoilers_channel")
-            spoilers_keywords = set(config.get("spoilers_keywords"))
+            spoilers_keywords = set(map(lambda x: x.lower(), config.get("spoilers_keywords")))
             split_message = set(map(str.lower, re.findall(r"[\w']+", message.clean_content)))
             if spoilers_keywords.intersection(split_message) and not (message.channel.name == spoilers_channel):
                 await self.add_reaction(message, "\u26A0")  # React with a warning emoji
@@ -397,38 +385,52 @@ class GlyphBot(discord.Client):
                         await self.skill_kick(message, target_user)
                     elif subskill == "purge":
                         await skills.purge(self, message, ai.get_parameter("text_time"))
+                elif skill == "configuration":  # TODO: Permission checking
+                    if message.channel.is_private:
+                        await self.safe_send_message(message.channel, "You can't modify the configuration for PMs!")
+                        return
+                    elif not message.author.server_permissions.administrator:
+                        await self.safe_send_message(message.channel,
+                                                     "You must be an administrator to modify this servers config!")
+                        return
+                    if subskill == "load":
+                        hasteregex = re.compile(r"hastebin.com\/(\w{10}).json")
+                        try:
+                            hasteid = hasteregex.search(ai.get_parameter("url"))
+                            self.configdb.open()
+                            result = self.configdb.update(server.id, config.inhaste(hasteid.group(1)))
+                            self.configdb.close()
+                            await self.safe_send_message(message.channel, result)
+                        except KeyError:
+                            await self.safe_send_message(message.channel,
+                                                         "Sorry, but that url is wrong for me to load a config from.")
+                    elif subskill == "view":
+                        await self.safe_send_message(message.channel,
+                                                     "Here's the current config: {}".format(config.outhaste()))
+                else:
+                    await self.safe_send_message(message.channel, "<:confusablob:341765305711722496> Odd, "
+                                                                  "you seem to have triggered a skill that "
+                                                                  "isn't currently available.")
             else:
                 await self.safe_send_message(message.channel, ai.response)
 
     async def on_member_join(self, member):
         server = member.server
-        config = self.configs.get(server)
-        if config.getboolean("auditing", "joins"):
+        config = self.configdb.get(server)
+        if config.get("auditing_joins"):
             await self.auditor.audit(server, auditing.MEMBER_JOIN, self.auditor.get_user_info(member), user=member)
-        if config.getboolean("welcome", "announce_in_server"):
-            await self.safe_send_message(server.default_channel, "Welcome {}!".format(member.mention))
-        # if welcomed:
-        #     text = self.get_config_message("welcome", member, server)
-        #     welcome_embed = discord.Embed(
-        #         title="Welcome to {}!".format(server.name),
-        #         description=text,
-        #         colour=0x4286F4)
-        #     await self.safe_send_message(member, embed=welcome_embed)
 
     async def on_member_remove(self, member):
         server = member.server
-        config = self.configs.get(server)
-        if config.getboolean("auditing", "leaves"):
+        config = self.configdb.get(server)
+        if config.get("auditing_leaves"):
             await self.auditor.audit(server, auditing.MEMBER_LEAVE, self.auditor.get_user_info(member), user=member)
-        # invite = self.create_invite(member.server).url
-        # await self.safe_send_message(member, "Did you leave {} by accident?
-        #                                       Here's a reinvite: {}".format(member.server, invite))
 
     async def on_reaction_add(self, reaction, user):
         server = reaction.message.server
-        config = self.configs.get(server)
+        config = self.configdb.get(server)
         message = reaction.message
-        if config.getboolean("auditing", "reactions"):
+        if config.get("auditing_reactions"):
             await self.auditor.audit(server, auditing.REACTION_ADD,
                                      "{} added reaction {} to {}".format(user.mention,
                                                                          reaction.emoji,
@@ -438,33 +440,11 @@ class GlyphBot(discord.Client):
             embed = discord.Embed(description="<:xmark:344316007164149770> Removed!", color=0xFF0000)
             await self.safe_edit_message(message, embed=embed, expire_time=5, clear_reactions=True)
             self.removable_messages.remove(message.id)
-        # removable = False
-        # is_fa_quickview = False
-        # if not reaction.message.author == self.user:
-        #     return
-        # try:
-        #     removable = ("React \u274C to delete this." in str(message.embeds[0]))
-        #     is_fa_quickview = ("React \U0001F48C to receive full size image in a DM." in str(message.embeds[0]))
-        # except IndexError:
-        #     pass
-        # if reaction.emoji == "\u274C" and removable:
-        #     embed = discord.Embed(description=":x: Removed!", color=0xFF0000)
-        #     await self.safe_edit_message(reaction.message, embed=embed, expire_time=5, clear_reactions=True)
-        # elif reaction.emoji == "\U0001F48C" and is_fa_quickview:
-        #     try:
-        #         embed = message.embeds[0]
-        #         submission = fa.Submission(url=embed['url'])
-        #         embed = discord.Embed(title=submission.title, url=submission.link, colour=submission.color)
-        #         embed.set_footer(text="React \u274C to delete this.")
-        #         embed.set_image(url=submission.download)
-        #         await self.safe_send_message(user, embed=embed)
-        #     except ValueError:
-        #         await self.safe_send_message(user, "Sorry, I failed to get the full sized image for you.")
 
     async def on_reaction_remove(self, reaction, user):
         server = reaction.message.server
-        config = self.configs.get(server)
-        if config.getboolean("auditing", "reactions"):
+        config = self.configdb.get(server)
+        if config.get("auditing_reactions"):
             await self.auditor.audit(server, auditing.REACTION_REMOVE,
                                      "{} removed reaction {} from {}".format(user.mention,
                                                                              reaction.emoji, reaction.message.content),
@@ -478,7 +458,6 @@ class GlyphBot(discord.Client):
             self.deletewith_messages.pop(message.id)
 
     async def on_server_join(self, server):
-        self.configs.update({server: serverconfig.Config(server)})
         log.info("{}: Added to server.".format(server))
         await self.update_server_count()
 
@@ -489,32 +468,6 @@ class GlyphBot(discord.Client):
         log.info("{}: Removed from server.".format(server))
         await self.update_server_count()
 
-    async def on_channel_create(self, channel):
-        if channel.name == "glyph":
-            embed = discord.Embed(title="Glyph Channel",
-                                  description="Congratulations on creating the `glyph` channel!\n"
-                                              "This will be used to configure me.\n"
-                                              "Click [here](https://glyph-discord.readthedocs.io/"
-                                              "en/latest/configuration.html) to get started.")
-            await self.safe_send_message(channel, embed=embed)
-            log.info("{}: Glyph channel created.".format(channel.server))
-
-    async def on_channel_update(self, before, after):
-        server = after.server
-        if after.name == "glyph" and not before.topic == after.topic:
-            self.configs.update({server: serverconfig.Config(server)})
-            config = self.configs.get(server)
-            color = 0xFF0000  # Red
-            if config.parsing_status == "Okay":
-                color = 0x00FF00  # Green
-            embed = discord.Embed(title="Configuration Updated", timestamp=datetime.utcnow(), color=color)
-            embed.add_field(name="Parsing Status", value=config.parsing_status)
-            beforehaste = HasteBin().post(before.topic)
-            afterhaste = HasteBin().post(after.topic)
-            embed.add_field(name="History", value="**Before** {}\n**After** {}".format(beforehaste, afterhaste))
-            embed.set_footer(text="Configuration")
-            await self.safe_send_message(after, embed=embed)
-            log.info("{}: Configuration updated.".format(server))
 
 if __name__ == '__main__':
     bot = GlyphBot()

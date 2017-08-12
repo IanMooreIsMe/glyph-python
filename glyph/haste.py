@@ -12,3 +12,7 @@ class HasteBin(object):
         response = requests.post(self.url + "documents", text)
         haste = self.url + json.loads(response.text)["key"]
         return haste
+
+    def get(self, key):
+        response = requests.get(self.url + "raw/" + key)
+        return response.text
