@@ -227,29 +227,9 @@ class GlyphBot(discord.Client):
             colour=0x4286F4)
         await self.safe_send_message(message.channel, embed=embed)
 
-    async def skill_kick(self, message, wit, *, member=None):
-        if message.channel.is_private:
-            await self.safe_send_message(message.channel, "You have to be in a server to kick someone.")
-            return
-        elif not message.author.server_permissions.kick_members:
-            await self.safe_send_message(message.channel, "You don't have permission to do kick people.")
-            return
-        # Get the user
-        if member is None:
-            try:
-                member = discord.utils.get(message.server.members, name=wit["entities"]["user"][0]["value"])
-            except KeyError:
-                await self.safe_send_message(message.channel, "Sorry, I couldn't find a user to kick.")
-                return
-        # Kick the user
-        kick = await self.safe_kick(member)
-        if kick:
-            await self.safe_send_message(message.channel, ":ok_hand: ***{} has been kicked!***".format(member.mention))
-
     async def on_ready(self):
         log.info("Logged in as {} ({})".format(self.user.name, self.user.id))
         await self.change_presence(game=discord.Game(name="Armax Arsenal Arena"))
-        self.configdb.load_all()
         farm_servers = []
         for server in list(self.servers):
             total_members = len(server.members)
@@ -264,6 +244,8 @@ class GlyphBot(discord.Client):
                 await asyncio.sleep(2)  # Wait because of rate limiting
                 await self.leave_server(server)
         log.info("Left {} bot farm server(s).".format(len(farm_servers)))
+        self.configdb.load_all()
+        log.info("Loaded {} configurations from the database.".format(len(self.configdb.configs)))
         await self.update_server_count()
         log.info("Connected to {} server(s) with {} members.".format(self.total_servers(), self.total_members()))
         self.ready = True
@@ -358,7 +340,7 @@ class GlyphBot(discord.Client):
                 elif skill == "help":
                     await self.skill_help(message)
                 elif skill == "role":
-                    allowed_roles = config.get("allowed_roles")
+                    allowed_roles = config.get("selectable_roles")
                     if subskill == "set":
                         desired_role = ai.get_parameter("role")
                         try:
@@ -378,13 +360,13 @@ class GlyphBot(discord.Client):
                     embed = skills.get_time_embed(timezone)
                     await self.safe_send_message(message.channel, embed=embed)
                 elif skill == "moderation":
-                    if subskill == "kick":
+                    if subskill == "kick":  # Needs to me reworked
                         try:
                             target_user = clean_mentions[0]
                         except IndexError:
                             await self.safe_send_message(message.channel, "Sorry, can't find a user to kick.")
                             return
-                        await self.skill_kick(message, target_user)
+                        await skills.kick(message, target_user)
                     elif subskill == "purge":
                         await skills.purge(self, message, ai.get_parameter("text_time"))
                 elif skill == "configuration":  # TODO: Permission checking
@@ -411,10 +393,13 @@ class GlyphBot(discord.Client):
                                                                   "the following reason(s)! Please check that you have "
                                                                   "a properly formatted JSON and the data is "
                                                                   "as expected.```{}```\n"
-                                                                  "**Help:** [Default Config]({}) "
-                                                                  "- [Official Glyph Server]"
+                                                                  "**Help:** "
+                                                                  "[Documentation]"
+                                                                  "(https://glyph-discord.readthedocs.io"
+                                                                  "/en/latest/configuration.html) - "
+                                                                  "[Official Glyph Server]"
                                                                   "(https://discord.me/glyph-discord)".format(
-                                                          result, self.configdb.outhaste(0)),
+                                                          result),
                                                       color=0xFF0000,
                                                       timestamp=datetime.utcnow())
                             embed.set_footer(text="Configuration")
@@ -423,9 +408,17 @@ class GlyphBot(discord.Client):
                             await self.safe_send_message(message.channel,
                                                          "Sorry, but that url is wrong for me to load a config from.")
                     elif subskill == "view":
-                        await self.safe_send_message(message.channel,
-                                                     "Here's the current config: {}".format(
-                                                         self.configdb.outhaste(server)))
+                        embed = discord.Embed(title="Configuration Viewer",
+                                              description="Here's the current config: {}\n"
+                                                          "**Help:** "
+                                                          "[Documentation]"
+                                                          "(https://glyph-discord.readthedocs.io"
+                                                          "/en/latest/configuration.html) "
+                                                          "- [Official Glyph Server]"
+                                                          "(https://discord.me/glyph-discord)".format(
+                                                  self.configdb.outhaste(server)),
+                                              timestamp=datetime.utcnow())
+                        await self.safe_send_message(message.channel, embed=embed)
                 else:
                     await self.safe_send_message(message.channel, "<:confusablob:341765305711722496> Odd, "
                                                                   "you seem to have triggered a skill that "
@@ -434,18 +427,24 @@ class GlyphBot(discord.Client):
                 await self.safe_send_message(message.channel, ai.response)
 
     async def on_member_join(self, member):
+        if not self.ready:
+            return
         server = member.server
         config = self.configdb.get(server)
         if config.get("auditing_joins"):
             await self.auditor.audit(server, auditing.MEMBER_JOIN, self.auditor.get_user_info(member), user=member)
 
     async def on_member_remove(self, member):
+        if not self.ready:
+            return
         server = member.server
         config = self.configdb.get(server)
         if config.get("auditing_leaves"):
             await self.auditor.audit(server, auditing.MEMBER_LEAVE, self.auditor.get_user_info(member), user=member)
 
     async def on_reaction_add(self, reaction, user):
+        if not self.ready:
+            return
         server = reaction.message.server
         config = self.configdb.get(server)
         message = reaction.message
@@ -461,6 +460,8 @@ class GlyphBot(discord.Client):
             self.removable_messages.remove(message.id)
 
     async def on_reaction_remove(self, reaction, user):
+        if not self.ready:
+            return
         server = reaction.message.server
         config = self.configdb.get(server)
         if config.get("auditing_reactions"):
@@ -470,6 +471,8 @@ class GlyphBot(discord.Client):
                                      user=user)
 
     async def on_message_delete(self, message):
+        if not self.ready:
+            return
         if message.id in self.deletewith_messages:
             embed = discord.Embed(description="<:xmark:344316007164149770> Removed!", color=0xFF0000)
             msg = self.deletewith_messages.get(message.id)
@@ -477,10 +480,14 @@ class GlyphBot(discord.Client):
             self.deletewith_messages.pop(message.id)
 
     async def on_server_join(self, server):
+        if not self.ready:
+            return
         log.info("{}: Added to server.".format(server))
         await self.update_server_count()
 
     async def on_server_remove(self, server):
+        if not self.ready:
+            return
         self.configdb.delete(server.id)
         log.info("{}: Removed from server.".format(server))
         await self.update_server_count()

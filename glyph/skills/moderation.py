@@ -74,3 +74,22 @@ async def purge(bot, message, duration):
         embed.set_footer(text="Moderation")
         await bot.safe_edit_message(status, embed=embed)
     return
+
+async def kick(self, message, wit, *, member=None):
+    if message.channel.is_private:
+        await self.safe_send_message(message.channel, "You have to be in a server to kick someone.")
+        return
+    elif not message.author.server_permissions.kick_members:
+        await self.safe_send_message(message.channel, "You don't have permission to do kick people.")
+        return
+    # Get the user
+    if member is None:
+        try:
+            member = discord.utils.get(message.server.members, name=wit["entities"]["user"][0]["value"])
+        except KeyError:
+            await self.safe_send_message(message.channel, "Sorry, I couldn't find a user to kick.")
+            return
+    # Kick the user
+    kick = await self.safe_kick(member)
+    if kick:
+        await self.safe_send_message(message.channel, ":ok_hand: ***{} has been kicked!***".format(member.mention))

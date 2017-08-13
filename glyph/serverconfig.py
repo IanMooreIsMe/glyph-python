@@ -29,7 +29,8 @@ class ConfigDatabase(object):
     def load_all(self):
         self.open()
         self.configs.clear()
-        self.cur.execute("SELECT * FROM configuration")
+        self.cur.execute("SELECT guild_id, wiki, selectable_roles, spoilers_channel, spoilers_keywords,"
+                         " fa_quickview_enabled, fa_quickview_thumbnail, picarto_quickview_enabled FROM configuration")
         rows = self.cur.fetchall()
         for row in rows:
             guild_id = row.get("guild_id")
@@ -39,7 +40,9 @@ class ConfigDatabase(object):
 
     def load(self, guild_id):
         self.open()
-        self.cur.execute("SELECT * FROM configuration WHERE guild_id = (%s)", [guild_id])
+        self.cur.execute("SELECT (guild_id, wiki, selectable_roles, spoilers_channel, spoilers_keywords,"
+                         " fa_quickview_enabled, fa_quickview_thumbnail, picarto_quickview_enabled) FROM configuration "
+                         "WHERE guild_id = (%s)", [guild_id])
         row = self.cur.fetchone()
         guild_id = row.get("guild_id")
         row.pop("guild_id")
@@ -69,27 +72,27 @@ class ConfigDatabase(object):
         self.open()
         try:
             self.cur.execute("INSERT INTO configuration"
-                             " (guild_id, wiki, allowed_roles, spoilers_channel, spoilers_keywords,"
+                             " (guild_id, wiki, selectable_roles, spoilers_channel, spoilers_keywords,"
                              " fa_quickview_enabled, fa_quickview_thumbnail, picarto_quickview_enabled)"
                              " VALUES (%s, %s, %s, %s, %s, %s, %s, %s)"
                              " ON CONFLICT (guild_id) DO UPDATE SET"
-                             " (wiki, allowed_roles, spoilers_channel, spoilers_keywords,"
+                             " (wiki, selectable_roles, spoilers_channel, spoilers_keywords,"
                              " fa_quickview_enabled, fa_quickview_thumbnail, picarto_quickview_enabled)"
-                             " = (EXCLUDED.wiki, EXCLUDED.allowed_roles, EXCLUDED.spoilers_channel, "
+                             " = (EXCLUDED.wiki, EXCLUDED.selectable_roles, EXCLUDED.spoilers_channel, "
                              " EXCLUDED.spoilers_keywords, EXCLUDED.fa_quickview_enabled, "
                              " EXCLUDED.fa_quickview_thumbnail, EXCLUDED.picarto_quickview_enabled)",
                              [server.id,
                               config.get("wiki"),
-                              config.get("allowed_roles"),
+                              config.get("selectable_roles"),
                               config.get("spoilers_channel"),
                               config.get("spoilers_keywords"),
                               config.get("fa_quickview_enabled"),
                               config.get("fa_quickview_thumbnail"),
                               config.get("picarto_quickview_enabled")])
             self.conn.commit()
-        except (psycopg2.DataError, psycopg2.DatabaseError) as e:
+        except psycopg2.Error as e:
             self.close()
-            return e
+            return "{}: {}".format(e.diag.severity, e.diag.message_primary)
         else:
             self.configs.update({int(server.id): config})
             self.close()
