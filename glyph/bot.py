@@ -426,6 +426,14 @@ class GlyphBot(discord.Client):
             else:
                 await self.safe_send_message(message.channel, ai.response)
 
+    async def on_channel_update(self, before, after):
+        if after.name == "glyph" and not before.topic == after.topic:
+            await self.safe_send_message(after, "Sorry to interrupt, but glyph channels are no longer used for setting "
+                                                "my configuration.\nPlease see the updated method at: "
+                                                "https://glyph-discord.readthedocs.io/en/latest/configuration.html\n"
+                                                "If I'm mistaken, and this channel was never used for my configuration,"
+                                                "sorry to disturb you, this message will be removed at a later date.")
+
     async def on_member_join(self, member):
         if not self.ready:
             return
