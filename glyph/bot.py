@@ -124,10 +124,7 @@ class GlyphBot(discord.Client):
                 embed.set_footer(text="React \u274C to remove")
         msg = None
         if clear_reactions:
-            try:
-                await self.clear_reactions(message)
-            except discord.Forbidden:
-                pass
+            await self.safe_clear_reactions(message)
         try:
             msg = await self.edit_message(message, new, embed=embed)
 
@@ -157,8 +154,25 @@ class GlyphBot(discord.Client):
             log.warning("{} - {}: Cannot purge messages, no permission?".format(channel.server, channel.name))
         except discord.NotFound:
             log.warning("{} - {}: Cannot purge messages, invalid channel?".format(channel.server, channel.name))
-
         return dels
+
+    async def safe_add_reaction(self, message, emoji):
+        reaction = None
+        channel = message.channel
+        try:
+            reaction = await self.add_reaction(message, emoji)
+        except discord.Forbidden:
+            log.warning("{} - {}: Cannot add reaction, no permission?".format(channel.server, channel.name))
+        except discord.NotFound:
+            log.warning("{} - {}: Cannot add reaction, invalid message or emoji?".format(channel.server, channel.name))
+        return reaction
+
+    async def safe_clear_reactions(self, message):
+        channel = message.channel
+        try:
+            await self.clear_reactions(message)
+        except discord.Forbidden:
+            log.warning("{} - {}: Cannot clear reactions, no permission?".format(channel.server, channel.name))
 
     async def safe_kick(self, member):
         kick = None
@@ -264,7 +278,7 @@ class GlyphBot(discord.Client):
             spoilers_keywords = set(map(lambda x: x.lower(), config.get("spoilers_keywords")))
             split_message = set(map(str.lower, re.findall(r"[\w']+", message.clean_content)))
             if spoilers_keywords.intersection(split_message) and not (message.channel.name == spoilers_channel):
-                await self.add_reaction(message, "\u26A0")  # React with a warning emoji
+                await self.safe_add_reaction(message, "\u26A0")  # React with a warning emoji
         # FA QuickView
         r = fa.Submission.regex
         if r.search(message.clean_content) and config.get("fa_quickview_enabled"):
