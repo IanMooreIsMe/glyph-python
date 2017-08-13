@@ -10,3 +10,4 @@ pillow
 pytz
 requests
 wikipedia
+psycopg2
