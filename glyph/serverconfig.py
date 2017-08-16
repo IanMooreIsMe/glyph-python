@@ -4,7 +4,7 @@ import urllib.parse
 import psycopg2
 from psycopg2.extras import RealDictCursor
 
-from .haste import HasteBin
+from . import hastebin
 
 
 class ConfigDatabase(object):
@@ -99,12 +99,15 @@ class ConfigDatabase(object):
             return "Success!"
 
     def outhaste(self, server):
-        haste = HasteBin().post(json.dumps(self.get(server), sort_keys=True, indent=4))
+        try:
+            haste = hastebin.post(json.dumps(self.get(server), sort_keys=True, indent=4))
+        except json.JSONDecodeError as e:
+            haste = "\n*Error dumping the JSON file. This issue will be investigated.*\n```{}```".format(e)
         return haste
 
     def inhaste(self, server, haste_key):
         try:
-            config = json.loads(HasteBin().get(haste_key))
+            config = json.loads(hastebin.get(haste_key))
         except json.JSONDecodeError as e:
             return e
         else:

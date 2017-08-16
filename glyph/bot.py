@@ -84,6 +84,8 @@ class GlyphBot(discord.Client):
             log.warning("{} - {}: Cannot send typing, no permission?".format(destination.server, destination.name))
         except discord.NotFound:
             log.warning("{} - {}: Cannot send typing, invalid channel?".format(destination.server, destination.name))
+        except discord.HTTPException:
+            log.warning("{} - {}: Cannot send typing, failed.".format(destination.server, destination.name))
 
     async def safe_send_message(self, destination, content=None, *, embed=None, expire_time=0, removable=False,
                                 deletewith=None):
@@ -110,6 +112,8 @@ class GlyphBot(discord.Client):
             log.warning("{} - {}: Cannot send message, no permission?".format(destination.server, destination.name))
         except discord.NotFound:
             log.warning("{} - {}: Cannot send message, invalid channel?".format(destination.server, destination.name))
+        except discord.HTTPException:
+            log.warning("{} - {}: Cannot send message, failed.".format(destination.server, destination.name))
 
         return msg
 
@@ -135,6 +139,8 @@ class GlyphBot(discord.Client):
                 self.removable_messages.append(msg.id)
         except discord.NotFound:
             log.warning("Cannot edit message \"{}\", message not found".format(message.clean_content))
+        except discord.HTTPException:
+            log.warning("Cannot edit message \"{}\", failed.".format(message.clean_content))
 
         return msg
 
@@ -145,6 +151,8 @@ class GlyphBot(discord.Client):
             log.warning("Cannot delete message \"{}\", no permission?".format(message.clean_content))
         except discord.NotFound:
             log.warning("Cannot delete message \"{}\", invalid channel?".format(message.clean_content))
+        except discord.HTTPException:
+            log.warning("Cannot delete message \"{}\", failed.".format(message.clean_content))
 
     async def safe_purge_from(self, channel, *, limit=100, check=None, before=None, after=None, around=None):
         dels = None
