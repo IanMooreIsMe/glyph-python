@@ -35,7 +35,7 @@ class ConfigDatabase(object):
         for row in rows:
             guild_id = row.get("guild_id")
             row.pop("guild_id")
-            self.configs.update({guild_id: row})
+            self.configs.update({guild_id: self._pretty_print(row)})
         self.close()
 
     def load(self, guild_id):
@@ -45,9 +45,31 @@ class ConfigDatabase(object):
                          "WHERE guild_id = (%s)", [guild_id])
         row = self.cur.fetchone()
         guild_id = row.get("guild_id")
-        row.pop("guild_id")
-        self.configs.update({guild_id: row})
+        self.configs.update({guild_id: self._pretty_print(row)})
         self.close()
+
+    @staticmethod
+    def _pretty_print(config):
+        pretty_config = {
+            "roles": {
+              "selectable": config["selectable_roles"]
+            },
+            "quickview": {
+              "fa": {
+                "enabled": config["fa_quickview_enabled"],
+                "thumbnail": config["fa_quickview_thumbnail"]
+              },
+              "picarto": {
+                "enabled": config["picarto_quickview_enabled"]
+              }
+            },
+            "spoilers": {
+              "safe_channel": config["spoilers_channel"],
+              "keywords": config["spoilers_keywords"]
+            },
+            "wiki": config["wiki"]
+        }
+        return pretty_config
 
     def delete(self, guild_id):
         self.open()
@@ -82,13 +104,13 @@ class ConfigDatabase(object):
                              " EXCLUDED.spoilers_keywords, EXCLUDED.fa_quickview_enabled, "
                              " EXCLUDED.fa_quickview_thumbnail, EXCLUDED.picarto_quickview_enabled)",
                              [server.id,
-                              config.get("wiki"),
-                              config.get("selectable_roles"),
-                              config.get("spoilers_channel"),
-                              config.get("spoilers_keywords"),
-                              config.get("fa_quickview_enabled"),
-                              config.get("fa_quickview_thumbnail"),
-                              config.get("picarto_quickview_enabled")])
+                              config["wiki"],
+                              config["roles"]["selectable"],
+                              config["spoilers"]["safe_channel"],
+                              config["spoilers"]["keywords"],
+                              config["quickview"]["fa"]["enabled"],
+                              config["quickview"]["fa"]["thumbnail"],
+                              config["quickview"]["picarto"]["enabled"]])
             self.conn.commit()
         except psycopg2.Error as e:
             self.close()

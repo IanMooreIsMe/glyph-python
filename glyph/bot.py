@@ -281,15 +281,15 @@ class GlyphBot(discord.Client):
         server = message.server
         config = self.configdb.get(server)
         # Check for spoilery words
-        if config.get("spoilers_keywords"):
-            spoilers_channel = config.get("spoilers_channel")
-            spoilers_keywords = set(map(lambda x: x.lower(), config.get("spoilers_keywords")))
+        if config["spoilers"]["keywords"]:
+            spoilers_channel = config["spoilers"]["safe_channel"]
+            spoilers_keywords = set(map(lambda x: x.lower(), config["spoilers"]["keywords"]))
             split_message = set(map(str.lower, re.findall(r"[\w']+", message.clean_content)))
             if spoilers_keywords.intersection(split_message) and not (message.channel.name == spoilers_channel):
                 await self.safe_add_reaction(message, "\u26A0")  # React with a warning emoji
         # FA QuickView
         r = fa.Submission.regex
-        if r.search(message.clean_content) and config.get("fa_quickview_enabled"):
+        if r.search(message.clean_content) and config["quickview"]["fa"]["enabled"]:
             links = r.findall(message.clean_content)
             for link in links:
                 link_type = link[4]
@@ -297,14 +297,14 @@ class GlyphBot(discord.Client):
                 if link_type == "view":
                     try:
                         submission = fa.Submission(id=link_id)
-                        embed = submission.get_embed(thumbnail=config.get("fa_quickview_thumbnail"))
+                        embed = submission.get_embed(thumbnail=config["quickview"]["fa"]["thumbnail"])
                         await self.safe_send_message(message.channel, embed=embed, deletewith=message)
                     except ValueError:
                         pass
             return
         # Picarto QuickView
         r = picarto.Channel.regex
-        if r.search(message.clean_content) and config.get("picarto_quickview_enabled"):
+        if r.search(message.clean_content) and config["quickview"]["picarto"]["enabled"]:
             links = r.findall(message.clean_content)
             for link in links:
                 link_name = link[4]
@@ -357,12 +357,12 @@ class GlyphBot(discord.Client):
                 subskill = ai.get_action_depth(2)
                 if skill == "wiki":
                     query = ai.get_parameter("search_query")
-                    wiki = config.get("wiki")
+                    wiki = config["wiki"]
                     await skills.wiki(self, message, query=query, wiki=wiki)
                 elif skill == "help":
                     await self.skill_help(message)
                 elif skill == "role":
-                    allowed_roles = config.get("selectable_roles")
+                    allowed_roles = config["roles"]["selectable"]
                     if subskill == "set":
                         desired_role = ai.get_parameter("role")
                         try:
