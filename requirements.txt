@@ -1,5 +1,4 @@
-configparser
-discord.py==0.16.9
+discord.py==0.16.10
 apiai
 numpy
 praw==5.0.1
