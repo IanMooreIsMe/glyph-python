@@ -461,7 +461,7 @@ class GlyphBot(discord.Client):
             return
         server = member.server
         config = self.configdb.get(server)
-        if config.get("auditing_joins"):
+        if config["auditing"]["joins"]:
             await self.auditor.audit(server, auditing.MEMBER_JOIN, self.auditor.get_user_info(member), user=member)
 
     async def on_member_remove(self, member):
@@ -469,7 +469,7 @@ class GlyphBot(discord.Client):
             return
         server = member.server
         config = self.configdb.get(server)
-        if config.get("auditing_leaves"):
+        if config["auditing"]["leaves"]:
             await self.auditor.audit(server, auditing.MEMBER_LEAVE, self.auditor.get_user_info(member), user=member)
 
     async def on_reaction_add(self, reaction, user):
@@ -478,7 +478,7 @@ class GlyphBot(discord.Client):
         server = reaction.message.server
         config = self.configdb.get(server)
         message = reaction.message
-        if config.get("auditing_reactions"):
+        if config["auditing"]["reactions"]:
             await self.auditor.audit(server, auditing.REACTION_ADD,
                                      "{} added reaction {} to {}".format(user.mention,
                                                                          reaction.emoji,
@@ -494,7 +494,7 @@ class GlyphBot(discord.Client):
             return
         server = reaction.message.server
         config = self.configdb.get(server)
-        if config.get("auditing_reactions"):
+        if config["auditing"]["reactions"]:
             await self.auditor.audit(server, auditing.REACTION_REMOVE,
                                      "{} removed reaction {} from {}".format(user.mention,
                                                                              reaction.emoji, reaction.message.content),

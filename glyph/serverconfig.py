@@ -30,7 +30,8 @@ class ConfigDatabase(object):
         self.open()
         self.configs.clear()
         self.cur.execute("SELECT guild_id, wiki, selectable_roles, spoilers_channel, spoilers_keywords,"
-                         " fa_quickview_enabled, fa_quickview_thumbnail, picarto_quickview_enabled FROM configuration")
+                         " fa_quickview_enabled, fa_quickview_thumbnail, picarto_quickview_enabled, auditing_channel, "
+                         "auditing_joins, auditing_leaves, auditing_reactions FROM configuration")
         rows = self.cur.fetchall()
         for row in rows:
             guild_id = row.get("guild_id")
@@ -40,8 +41,9 @@ class ConfigDatabase(object):
 
     def load(self, guild_id):
         self.open()
-        self.cur.execute("SELECT (guild_id, wiki, selectable_roles, spoilers_channel, spoilers_keywords,"
-                         " fa_quickview_enabled, fa_quickview_thumbnail, picarto_quickview_enabled) FROM configuration "
+        self.cur.execute("SELECT guild_id, wiki, selectable_roles, spoilers_channel, spoilers_keywords,"
+                         " fa_quickview_enabled, fa_quickview_thumbnail, picarto_quickview_enabled, auditing_channel, "
+                         "auditing_joins, auditing_leaves, auditing_reactions FROM configuration "
                          "WHERE guild_id = (%s)", [guild_id])
         row = self.cur.fetchone()
         guild_id = row.get("guild_id")
@@ -66,6 +68,12 @@ class ConfigDatabase(object):
             "spoilers": {
               "safe_channel": config["spoilers_channel"],
               "keywords": config["spoilers_keywords"]
+            },
+            "auditing": {
+              "channel": config["auditing_channel"],
+              "joins": config["auditing_joins"],
+              "leaves": config["auditing_leaves"],
+              "reactions": config["auditing_reactions"]
             },
             "wiki": config["wiki"]
         }
@@ -95,14 +103,18 @@ class ConfigDatabase(object):
         try:
             self.cur.execute("INSERT INTO configuration"
                              " (guild_id, wiki, selectable_roles, spoilers_channel, spoilers_keywords,"
-                             " fa_quickview_enabled, fa_quickview_thumbnail, picarto_quickview_enabled)"
-                             " VALUES (%s, %s, %s, %s, %s, %s, %s, %s)"
+                             " fa_quickview_enabled, fa_quickview_thumbnail, picarto_quickview_enabled, "
+                             " auditing_channel, auditing_joins, auditing_leaves, auditing_reactions)"
+                             " VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
                              " ON CONFLICT (guild_id) DO UPDATE SET"
                              " (wiki, selectable_roles, spoilers_channel, spoilers_keywords,"
-                             " fa_quickview_enabled, fa_quickview_thumbnail, picarto_quickview_enabled)"
+                             " fa_quickview_enabled, fa_quickview_thumbnail, picarto_quickview_enabled, "
+                             " auditing_channel, auditing_joins, auditing_leaves, auditing_reactions)"
                              " = (EXCLUDED.wiki, EXCLUDED.selectable_roles, EXCLUDED.spoilers_channel, "
                              " EXCLUDED.spoilers_keywords, EXCLUDED.fa_quickview_enabled, "
-                             " EXCLUDED.fa_quickview_thumbnail, EXCLUDED.picarto_quickview_enabled)",
+                             " EXCLUDED.fa_quickview_thumbnail, EXCLUDED.picarto_quickview_enabled, "
+                             " EXCLUDED.auditing_channel, EXCLUDED.auditing_joins, EXCLUDED.auditing_leaves, "
+                             " EXCLUDED.auditing_reactions)",
                              [server.id,
                               config["wiki"],
                               config["roles"]["selectable"],
@@ -110,7 +122,11 @@ class ConfigDatabase(object):
                               config["spoilers"]["keywords"],
                               config["quickview"]["fa"]["enabled"],
                               config["quickview"]["fa"]["thumbnail"],
-                              config["quickview"]["picarto"]["enabled"]])
+                              config["quickview"]["picarto"]["enabled"],
+                              config["auditing"]["channel"],
+                              config["auditing"]["joins"],
+                              config["auditing"]["leaves"],
+                              config["auditing"]["reactions"]])
             self.conn.commit()
         except psycopg2.Error as e:
             self.close()
