@@ -4,8 +4,11 @@ from datetime import datetime, timedelta
 import discord
 import humanize
 
+from . import utils
 
-async def purge(bot, message, duration):
+
+async def purge(bot, message, ai, config):
+    duration = ai.get_parameter("text_time")
     channel = message.channel
     if not message.author.permissions_in(channel).manage_messages and not channel.is_private:
         await bot.safe_send_message(channel, "You don't have permission to purge messages!")
@@ -75,21 +78,75 @@ async def purge(bot, message, duration):
         await bot.safe_edit_message(status, embed=embed)
     return
 
-async def kick(self, message, wit, *, member=None):
+async def kick(bot, message, ai, config):  # Not finished!
+    try:
+        member = bot.get_clean_mentions(message)
+    except IndexError:
+        await bot.safe_send_message(message.channel, "Sorry, can't find a user to kick.")
+        return
     if message.channel.is_private:
-        await self.safe_send_message(message.channel, "You have to be in a server to kick someone.")
+        await bot.safe_send_message(message.channel, "You have to be in a server to kick someone.")
         return
     elif not message.author.server_permissions.kick_members:
-        await self.safe_send_message(message.channel, "You don't have permission to do kick people.")
+        await bot.safe_send_message(message.channel, "You don't have permission to do kick people.")
         return
     # Get the user
     if member is None:
         try:
-            member = discord.utils.get(message.server.members, name=wit["entities"]["user"][0]["value"])
+            member = discord.utils.get(message.server.members, name=ai["entities"]["user"][0]["value"])
         except KeyError:
-            await self.safe_send_message(message.channel, "Sorry, I couldn't find a user to kick.")
+            await bot.safe_send_message(message.channel, "Sorry, I couldn't find a user to kick.")
             return
     # Kick the user
-    kick = await self.safe_kick(member)
+    kick = await bot.safe_kick(member)
     if kick:
-        await self.safe_send_message(message.channel, ":ok_hand: ***{} has been kicked!***".format(member.mention))
+        await bot.safe_send_message(message.channel, ":ok_hand: ***{} has been kicked!***".format(member.mention))
+
+
+@utils.server_only
+@utils.admin_only
+async def load_config(bot, message, ai, config):
+    haste_regex = re.compile(r"hastebin.com\/(\w{10})")
+    try:
+        haste = haste_regex.search(ai.get_parameter("url"))
+        result = bot.configdb.inhaste(message.server, haste.group(1))
+        if result == "Success!":
+            embed = discord.Embed(title="Configuration Update Success",
+                                  description="Successfully updated this servers configuration!",
+                                  color=0x00FF00,
+                                  timestamp=datetime.utcnow())
+        else:
+            embed = discord.Embed(title="Configuration Update Failure",
+                                  description="This servers configuration failed to update for "
+                                              "the following reason(s)! Please check that you have "
+                                              "a properly formatted JSON and the data is "
+                                              "as expected.```{}```\n"
+                                              "**Help:** "
+                                              "[Documentation]"
+                                              "(https://glyph-discord.readthedocs.io"
+                                              "/en/latest/configuration.html) - "
+                                              "[Official Glyph Server]"
+                                              "(https://discord.me/glyph-discord)".format(
+                                      result),
+                                  color=0xFF0000,
+                                  timestamp=datetime.utcnow())
+        embed.set_footer(text="Configuration")
+        await bot.safe_send_message(message.channel, embed=embed)
+    except KeyError:
+        await bot.safe_send_message(message.channel, "Sorry, but that url is wrong for me to load a info from.")
+
+
+@utils.server_only
+@utils.admin_only
+async def view_config(bot, message, ai, config):
+    embed = discord.Embed(title="Configuration Viewer",
+                          description="Here's the current info: {}\n"
+                                      "**Help:** "
+                                      "[Documentation]"
+                                      "(https://glyph-discord.readthedocs.io"
+                                      "/en/latest/configuration.html) "
+                                      "- [Official Glyph Server]"
+                                      "(https://discord.me/glyph-discord)".format(
+                              bot.configdb.outhaste(message.server)),
+                          timestamp=datetime.utcnow())
+    await bot.safe_send_message(message.channel, embed=embed)

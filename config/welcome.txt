@@ -1,7 +1,0 @@
-Hello {USER}!
-I am {BOTNAME}, a powerful bot for Discord that uses natural language as opposed to commands.
-I see you just joined {SERVER}, and would like to welcome you and let you know the rules.
-**Be kind.
-Keep channels on topic, and spoilers in #ark.
-Have fun.**
-If you want to learn more about what I can do, say `help`!

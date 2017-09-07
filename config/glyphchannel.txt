@@ -1,6 +1,0 @@
-**Glyph Channel**
-It appears you have created a channel for me.
-This will be used to push important update announcements and to configure me until a better system is in place.
-
-Visit https://glyph-discord.readthedocs.io/en/latest/configuration.html to get started.
-

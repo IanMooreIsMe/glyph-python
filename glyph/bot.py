@@ -1,13 +1,10 @@
 import asyncio
 import logging
 import re
-from datetime import datetime
 from json.decoder import JSONDecodeError
-from os import environ, getpid
+from os import environ
 
 import discord
-import humanize
-import psutil
 import requests
 
 from . import apiai
@@ -35,6 +32,7 @@ class GlyphBot(discord.Client):
         self.total_members = lambda: sum(1 for i in self.get_all_members())
         self.total_servers = lambda: len(self.servers)
         self.ready = False
+        self.skill_commander = skills.SkillCommander(self)
         super().__init__()
 
     async def update_server_count(self):
@@ -57,22 +55,6 @@ class GlyphBot(discord.Client):
             log.info("Updated Discord Bots count with {} servers!".format(count))
         else:
             log.warning("Failed to update Discord Bots server count with error code {}!".format(req.status_code))
-
-    def get_config_message(self, file, user=None, server=None):
-        if isinstance(user, discord.User):
-            user = user.name
-        else:
-            user = "you"
-        if isinstance(server, discord.Server):
-            server = server.name
-        else:
-            server = "the server"
-        with open("./config/{}.txt".format(file), "r") as file:
-            text = file.read()
-            text = text.replace("{BOTNAME}", self.user.name)
-            text = text.replace("{USER}", user)
-            text = text.replace("{SERVER}", server)
-        return text
 
     async def safe_send_typing(self, destination):
         if destination is None:
@@ -208,47 +190,6 @@ class GlyphBot(discord.Client):
             log.warning("{}: Cannot remove roles, no permission?".format(member.server))
             return False
 
-    async def skill_status(self, message):
-        def status_embed(ping):
-            process = psutil.Process(getpid())
-            last_restart_timedelta = datetime.now() - datetime.fromtimestamp(process.create_time())
-            last_restart = humanize.naturaltime(last_restart_timedelta)
-            servers = humanize.intcomma(self.total_servers())
-            members = humanize.intcomma(self.total_members())
-            messages = len(self.messages)
-            memory = psutil.virtual_memory()
-            memory_total = humanize.naturalsize(memory.total)
-            memory_used = humanize.naturalsize(memory.used)
-            memory_percent = memory.percent
-            cpu_count = psutil.cpu_count()
-            cpu_percent = psutil.cpu_percent()
-            disk_total = humanize.naturalsize(psutil.disk_usage("/").total)
-            disk_used = humanize.naturalsize(psutil.disk_usage("/").used)
-            disk_percent = psutil.disk_usage("/").percent
-            uptime = datetime.now() - datetime.fromtimestamp(psutil.boot_time())
-            embed = discord.Embed(title="Glyph Status", timestamp=datetime.utcfromtimestamp(process.create_time()))
-            embed.add_field(name="Discord Info",
-                            value="**Ping** {} ms\n**Servers** {}\n**Members** {}\n"
-                                  "**Messages** {}".format(ping, servers, members, messages))
-            embed.add_field(name="Stack Info",
-                            value="**Memory** {}/{} ({}%)\n**CPU** {}-cores at {}% utilization\n"
-                                  "**Disk** {}/{} ({}%)\n**Uptime** {} days".format(
-                                memory_used, memory_total, memory_percent, cpu_count, cpu_percent,
-                                disk_used, disk_total, disk_percent, uptime.days))
-            embed.set_footer(text="Last restarted {}".format(last_restart))
-            return embed
-        start = datetime.now().microsecond
-        msg = await self.safe_send_message(message.channel, embed=status_embed("?"))
-        diff = int((datetime.now().microsecond - start)/1000)
-        await self.safe_edit_message(msg, embed=status_embed(diff))
-
-    async def skill_help(self, message):
-        embed = discord.Embed(
-            title="Glyph Help",
-            description=self.get_config_message("help", message.author, message.server),
-            colour=0x4286F4)
-        await self.safe_send_message(message.channel, embed=embed)
-
     async def on_ready(self):
         log.info("Logged in as {} ({})".format(self.user.name, self.user.id))
         await self.change_presence(game=discord.Game(name="Armax Arsenal Arena"))
@@ -348,113 +289,23 @@ class GlyphBot(discord.Client):
                                                               "Please try again later.")
                 return
             # Do the action given by api.ai
-            action = ai.get_action_depth(0)
-            if "ignore" in str(ai.contexts) and not ai.get_action_depth(1) == "insult":  # If ignoring the user
-                await self.safe_send_message(message.channel,
-                                             "No {}, I'm done helping you for now.".format(message.author.mention))
-            elif action == "skill" and not ai.action_incomplete:  # If not ignoring the user and no follow up intent
-                skill = ai.get_action_depth(1)
-                subskill = ai.get_action_depth(2)
-                if skill == "wiki":
-                    query = ai.get_parameter("search_query")
-                    wiki = config["wiki"]
-                    await skills.wiki(self, message, query=query, wiki=wiki)
-                elif skill == "help":
-                    await self.skill_help(message)
-                elif skill == "role":
-                    allowed_roles = config["roles"]["selectable"]
-                    if subskill == "set":
-                        desired_role = ai.get_parameter("role")
-                        try:
-                            target_user = clean_mentions[0]
-                        except IndexError:
-                            target_user = message.author
-                        await skills.change_role(self, message, target_user, desired_role, allowed_roles)
-                    elif subskill == "list":
-                        await skills.list_roles(self, message, allowed_roles)
-                elif skill == "status":
-                    await self.skill_status(message)
-                elif skill == "reddit":
-                    multireddit = ai.get_parameter("multireddit")
-                    await skills.RedditSkill(self).send_image(message, multireddit=multireddit)
-                elif skill == "time":
-                    timezone = ai.get_parameter("timezone")
-                    embed = skills.get_time_embed(timezone)
-                    await self.safe_send_message(message.channel, embed=embed)
-                elif skill == "moderation":
-                    if subskill == "kick":  # Needs to me reworked
-                        try:
-                            target_user = clean_mentions[0]
-                        except IndexError:
-                            await self.safe_send_message(message.channel, "Sorry, can't find a user to kick.")
-                            return
-                        await skills.kick(message, target_user)
-                    elif subskill == "purge":
-                        await skills.purge(self, message, ai.get_parameter("text_time"))
-                elif skill == "configuration":  # TODO: Permission checking
-                    if message.channel.is_private:
-                        await self.safe_send_message(message.channel, "You can't modify the configuration for PMs!")
-                        return
-                    elif not message.author.server_permissions.administrator:
-                        await self.safe_send_message(message.channel,
-                                                     "You must be an administrator to modify this servers config!")
-                        return
-                    if subskill == "load":
-                        haste_regex = re.compile(r"hastebin.com\/(\w{10})")
-                        try:
-                            haste = haste_regex.search(ai.get_parameter("url"))
-                            result = self.configdb.inhaste(server, haste.group(1))
-                            if result == "Success!":
-                                embed = discord.Embed(title="Configuration Update Success",
-                                                      description="Successfully updated this servers configuration!",
-                                                      color=0x00FF00,
-                                                      timestamp=datetime.utcnow())
-                            else:
-                                embed = discord.Embed(title="Configuration Update Failure",
-                                                      description="This servers configuration failed to update for "
-                                                                  "the following reason(s)! Please check that you have "
-                                                                  "a properly formatted JSON and the data is "
-                                                                  "as expected.```{}```\n"
-                                                                  "**Help:** "
-                                                                  "[Documentation]"
-                                                                  "(https://glyph-discord.readthedocs.io"
-                                                                  "/en/latest/configuration.html) - "
-                                                                  "[Official Glyph Server]"
-                                                                  "(https://discord.me/glyph-discord)".format(
-                                                          result),
-                                                      color=0xFF0000,
-                                                      timestamp=datetime.utcnow())
-                            embed.set_footer(text="Configuration")
-                            await self.safe_send_message(message.channel, embed=embed)
-                        except KeyError:
-                            await self.safe_send_message(message.channel,
-                                                         "Sorry, but that url is wrong for me to load a config from.")
-                    elif subskill == "view":
-                        embed = discord.Embed(title="Configuration Viewer",
-                                              description="Here's the current config: {}\n"
-                                                          "**Help:** "
-                                                          "[Documentation]"
-                                                          "(https://glyph-discord.readthedocs.io"
-                                                          "/en/latest/configuration.html) "
-                                                          "- [Official Glyph Server]"
-                                                          "(https://discord.me/glyph-discord)".format(
-                                                  self.configdb.outhaste(server)),
-                                              timestamp=datetime.utcnow())
-                        await self.safe_send_message(message.channel, embed=embed)
-                else:
-                    await self.safe_send_message(message.channel, "<:confusablob:341765305711722496> Odd, "
-                                                                  "you seem to have triggered a skill that "
-                                                                  "isn't currently available.")
-            else:
-                await self.safe_send_message(message.channel, ai.response)
+            await self.skill_commander.process(message, ai, config)
 
-    async def on_channel_update(self, before, after):
-        if after.name == "glyph" and not before.topic == after.topic:
-            await self.safe_send_message(after, "Sorry to interrupt, but glyph channels are no longer used for setting "
-                                                "my configuration.\nPlease see the updated method at: "
-                                                "https://glyph-discord.readthedocs.io/en/latest/configuration.html\n"
-                                                "If I'm mistaken, and this channel was never used for my configuration,"
-                                                "sorry to disturb you, this message will be removed at a later date.")
+    def get_clean_mentions(self, message):
+        # Get the member of the bot so the mention can be removed from the message
+        try:
+            member = discord.utils.get(message.server.members, id=self.user.id)
+            if member is None:
+                member = self.user
+        except AttributeError:
+            member = self.user
+            # Remove self from the list of mentions in the message
+        clean_mentions = message.mentions
+        try:
+            clean_mentions.remove(member)
+        except ValueError:
+            pass
+        return clean_mentions
 
     async def on_member_join(self, member):
         if not self.ready:

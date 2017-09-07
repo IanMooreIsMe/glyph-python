@@ -5,9 +5,10 @@ import discord
 import pytz
 
 
-def get_time_embed(timezone=None):
+async def get(bot, message, ai, config):
     title = "UTC Time"
     # timestamp = datetime.utcnow()
+    timezone = ai.get_parameter("timezone")
     time = datetime.utcnow()
     try:
         if timezone:
@@ -19,4 +20,4 @@ def get_time_embed(timezone=None):
     embed = discord.Embed(title=title, description=time.strftime("**%H:%M:%S** on %A %B %d %Y"))
     try_tz = random.choice(pytz.common_timezones)
     embed.set_footer(text="Time | Try asking \"{} time\"".format(try_tz))
-    return embed
+    await bot.safe_send_message(message.channel, embed=embed)

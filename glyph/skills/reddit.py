@@ -15,8 +15,8 @@ class RedditSkill(object):
                              client_secret=environ.get("REDDIT_SECRET"),
                              user_agent=environ.get("REDDIT_USER_AGENT"))
 
-    async def send_image(self, message, *, multireddit=None):
-
+    async def send_image(self, message, ai, config):
+        multireddit = ai.get_parameter("multireddit")
         if multireddit is None:
             await self.bot.safe_send_message(message.channel, "I think you wanted an image from Reddit, "
                                                               "but I'm not sure of what. Sorry.")

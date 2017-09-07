@@ -1,16 +1,18 @@
 from datetime import datetime
 
-import discord
 import wikia
 import wikipedia
+from discord import Embed
 
 
-async def wiki(bot, message, *, wiki=None, query=None):
+async def search(bot, message, ai, config):
+    query = ai.get_parameter("search_query")
+    wiki = config["wiki"]
     if wiki is None or wiki.lower() == "wikipedia":
         try:
             page = wikipedia.page(query)
             summary = wikipedia.summary(query, sentences=3)
-            embed = discord.Embed(title=page.title, url=page.url, description=summary,  timestamp=datetime.utcnow())
+            embed = Embed(title=page.title, url=page.url, description=summary,  timestamp=datetime.utcnow())
             try:
                 embed.set_thumbnail(url=page.images[0])
             except (IndexError, AttributeError):
@@ -27,10 +29,10 @@ async def wiki(bot, message, *, wiki=None, query=None):
         return
     else:
         try:
-            search = wikia.search(wiki, query)
-            page = wikia.page(wiki, search[0])
+            results = wikia.search(wiki, query)
+            page = wikia.page(wiki, results[0])
             url = page.url.replace(" ", "_")
-            embed = discord.Embed(title=page.title, url=url, description=page.summary, timestamp=datetime.utcnow())
+            embed = Embed(title=page.title, url=url, description=page.summary, timestamp=datetime.utcnow())
             try:
                 embed.set_thumbnail(url=page.images[0])
             except (IndexError, AttributeError):
