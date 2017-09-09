@@ -4,7 +4,10 @@ from datetime import datetime
 import discord
 import pytz
 
+from . import utils
 
+
+@utils.register("time")
 async def get(bot, message, ai, config):
     title = "UTC Time"
     # timestamp = datetime.utcnow()

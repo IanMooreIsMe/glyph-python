@@ -137,14 +137,14 @@ class GlyphBot(discord.Client):
             log.warning("Cannot delete message \"{}\", failed.".format(message.clean_content))
 
     async def safe_purge_from(self, channel, *, limit=100, check=None, before=None, after=None, around=None):
-        dels = None
+        purges = None
         try:
-            dels = await self.purge_from(channel, limit=limit, check=check, before=before, after=after, around=around)
+            purges = await self.purge_from(channel, limit=limit, check=check, before=before, after=after, around=around)
         except discord.Forbidden:
             log.warning("{} - {}: Cannot purge messages, no permission?".format(channel.server, channel.name))
         except discord.NotFound:
             log.warning("{} - {}: Cannot purge messages, invalid channel?".format(channel.server, channel.name))
-        return dels
+        return purges
 
     async def safe_add_reaction(self, message, emoji):
         reaction = None

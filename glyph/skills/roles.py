@@ -4,7 +4,10 @@ from datetime import datetime
 
 import discord
 
+from . import utils
 
+
+@utils.register("role.set")
 async def change_role(bot, message, ai, config):
     desired_role = ai.get_parameter("role")
     selectable_roles = config["roles"]["selectable"]
@@ -53,6 +56,7 @@ async def change_role(bot, message, ai, config):
             # await list_roles(bot, message, allowed_roles)
 
 
+@utils.register("role.list")
 async def list_roles(bot, message, ai, config):
     selectable_roles = config["roles"]["selectable"]
     if message.channel.is_private:  # You can't list roles, if you're not in a server
