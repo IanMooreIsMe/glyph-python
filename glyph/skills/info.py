@@ -5,10 +5,10 @@ import humanize
 import psutil
 from discord import Embed
 
-from . import utils
+from .commander import register
 
 
-@utils.register("help")
+@register("help")
 async def info(bot, message, ai, config):
     help_file = path.join(path.dirname(path.abspath(__file__)), "text/help.txt")
     with open(help_file, "r") as file:
@@ -20,7 +20,7 @@ async def info(bot, message, ai, config):
     await bot.safe_send_message(message.channel, embed=embed)
 
 
-@utils.register("status")
+@register("status")
 async def status(bot, message, ai, config):
     def status_embed(ping):
         process = psutil.Process(getpid())

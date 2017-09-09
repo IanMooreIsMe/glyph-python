@@ -1,6 +1,6 @@
-from . import info, moderation, reddit, roles, time, wiki
-from .utils.commanders import SkillCommander
+from . import time, info, moderation, reddit, roles, wiki
+from .commander import SkillCommander
 
-__all__ = ["SkillCommander", "*"]
+__all__ = ["SkillCommander", "time", "info", "moderation", "reddit", "roles", "wiki"]
 
 

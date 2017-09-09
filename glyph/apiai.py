@@ -41,3 +41,13 @@ class AIResponse(object):
             return value
         except IndexError:
             return None
+
+    def get_skill(self):
+        skill = self.get_action_depth(1)
+        subskill = self.get_action_depth(2)
+        if subskill is not None:
+            value = "{}.{}".format(skill, subskill)
+        else:
+            value = skill
+        return value
+

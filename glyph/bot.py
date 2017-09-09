@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import re
+from importlib import import_module
 from json.decoder import JSONDecodeError
 from os import environ
 
@@ -11,7 +12,6 @@ from . import apiai
 from . import auditing
 from . import fa
 from . import picarto
-from . import skills
 from .serverconfig import ConfigDatabase
 
 log = logging.getLogger(__name__)
@@ -32,7 +32,7 @@ class GlyphBot(discord.Client):
         self.total_members = lambda: sum(1 for i in self.get_all_members())
         self.total_servers = lambda: len(self.servers)
         self.ready = False
-        self.skill_commander = skills.SkillCommander(self)
+        self.skill_commander = None
         super().__init__()
 
     async def update_server_count(self):
@@ -211,6 +211,8 @@ class GlyphBot(discord.Client):
         log.info("Loaded {} configurations from the database.".format(len(self.configdb.configs)))
         await self.update_server_count()
         log.info("Connected to {} server(s) with {} members.".format(self.total_servers(), self.total_members()))
+        skills = import_module(".skills", "glyph")
+        self.skill_commander = skills.SkillCommander(self)
         self.ready = True
 
     async def on_message(self, message):

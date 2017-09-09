@@ -5,9 +5,10 @@ import discord
 import humanize
 
 from . import utils
+from .commander import register
 
 
-@utils.register("moderation.purge")
+@register("moderation.purge")
 async def purge(bot, message, ai, config):
     duration = ai.get_parameter("text_time")
     channel = message.channel
@@ -79,7 +80,8 @@ async def purge(bot, message, ai, config):
         await bot.safe_edit_message(status, embed=embed)
     return
 
-@utils.register("moderation.kick")
+
+@register("moderation.kick")
 async def kick(bot, message, ai, config):  # Not finished!
     try:
         member = bot.get_clean_mentions(message)
@@ -105,7 +107,7 @@ async def kick(bot, message, ai, config):  # Not finished!
         await bot.safe_send_message(message.channel, ":ok_hand: ***{} has been kicked!***".format(member.mention))
 
 
-@utils.register("config.load")
+@register("configuration.load")
 @utils.server_only
 @utils.admin_only
 async def load_config(bot, message, ai, config):
@@ -139,7 +141,7 @@ async def load_config(bot, message, ai, config):
         await bot.safe_send_message(message.channel, "Sorry, but that url is wrong for me to load a info from.")
 
 
-@utils.register("config.view")
+@register("configuration.view")
 @utils.server_only
 @utils.admin_only
 async def view_config(bot, message, ai, config):

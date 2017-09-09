@@ -1,4 +1,12 @@
+import logging
+
 _skills = {}
+
+log = logging.getLogger(__name__)
+log.setLevel(logging.INFO)
+ch = logging.StreamHandler()
+ch.setLevel(logging.INFO)
+log.addHandler(ch)
 
 
 class SkillCommander(object):
@@ -14,14 +22,14 @@ class SkillCommander(object):
             await self.bot.safe_send_message(message.channel,
                                              "No {}, I'm done helping you for now.".format(message.author.mention))
         elif action == "skill" and not ai.action_incomplete:  # If not ignoring the user and no follow up intent
-            skill = ai.get_action_depth(1) + "." + ai.get_action_depth(2)
+            skill = ai.get_skill()
             try:
                 await _skills[skill](self.bot, message, ai, config)
             except KeyError:
                 await self.bot.safe_send_message(
                     message.channel,
                     "<:confusablob:341765305711722496> "
-                    "Odd, you seem to have triggered a skill that isn't currently available.")
+                    "Odd, you seem to have triggered `{}`, a skill that isn't currently available.".format(skill))
         else:
             await self.bot.safe_send_message(message.channel, ai.response)
 
@@ -29,5 +37,5 @@ class SkillCommander(object):
 def register(action):
     def dec(func):
         _skills.update({action: func})
-        print("Registered {}".format(action))
+        log.info("Registered {}".format(action))
     return dec

@@ -4,10 +4,10 @@ import wikia
 import wikipedia
 from discord import Embed
 
-from . import utils
+from .commander import register
 
 
-@utils.register("wiki")
+@register("wiki")
 async def search(bot, message, ai, config):
     query = ai.get_parameter("search_query")
     wiki = config["wiki"]
