@@ -50,4 +50,3 @@ class AIResponse(object):
         else:
             value = skill
         return value
-

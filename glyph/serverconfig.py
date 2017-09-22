@@ -155,6 +155,3 @@ class ConfigDatabase(object):
     def close(self):
         self.cur.close()
         self.conn.close()
-
-
-

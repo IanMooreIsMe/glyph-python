@@ -45,3 +45,17 @@ async def search(bot, message, ai, config):
         except (ValueError, wikia.wikia.WikiaError):
             await bot.safe_send_message(message.channel,
                                         "Sorry, I have no information for your search query `{}`.".format(query))
+
+
+# @register("define_word")
+# async def define(bot, message, ai, config):
+#     parser = WiktionaryParser()
+#     word = parser.fetch(ai.get_parameter("word"))
+#     embed = Embed(title=f"Definition for {word}",
+#                   description=f"**Definition** {word['definitions']['text']}\n"
+#                               f"**Part of Speech** {word['definitions']['partOfSpeech']}"
+#                               f"**Example** {word['definitions']['examples'][0]}"
+#                               f"**Etymology** {word['etymology']}",
+#                   timestamp=datetime.utcnow())
+#     embed.set_footer(text="Wiktionary")
+#     await bot.safe_send_message(message.channel, embed=embed)

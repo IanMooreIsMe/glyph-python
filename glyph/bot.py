@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import re
+from datetime import datetime, timedelta
 from importlib import import_module
 from json.decoder import JSONDecodeError
 from os import environ
@@ -29,6 +30,7 @@ class GlyphBot(discord.Client):
         self.configdb = ConfigDatabase(environ.get("DATABASE_URL"))
         self.removable_messages = []
         self.deletewith_messages = {}
+        self.cooldowns = {}
         self.total_members = lambda: sum(1 for i in self.get_all_members())
         self.total_servers = lambda: len(self.servers)
         self.ready = False
@@ -81,7 +83,20 @@ class GlyphBot(discord.Client):
                 embed.set_footer(text="React \u274C to remove")
         msg = None
         try:
-            msg = await self.send_message(destination, content, embed=embed)
+            if destination.permissions_for(await self.get_self_member(destination)).embed_links:
+                msg = await self.send_message(destination, content, embed=embed)
+            elif embed is not None:
+                try:
+                    tabulated_description = embed.description.replace("\n", "\n\t")
+                except AttributeError:
+                    tabulated_description = None
+                msg = await self.send_message(destination, f"**Title** \n\t{embed.title}\n"
+                                                           f"**Description** \n\t{tabulated_description}\n"
+                                                           f"**Images** \n\t{embed.image.url}\n\t{embed.thumbnail.url}"
+                                                           f"\n*No embed permission compatibility mode, "
+                                                           f"please grant embed permission*")
+            else:
+                msg = await self.send_message(destination, content)
 
             if msg and deletewith:
                 self.deletewith_messages.update({deletewith.id: msg})
@@ -215,6 +230,15 @@ class GlyphBot(discord.Client):
         self.skill_commander = skills.SkillCommander(self)
         self.ready = True
 
+    async def get_self_member(self, channel):
+        try:
+            member = discord.utils.get(channel.server.members, id=self.user.id)
+            if member is None:
+                member = self.user
+        except AttributeError:
+            member = self.user
+        return member
+
     async def on_message(self, message):
         if not self.ready:
             return
@@ -260,13 +284,23 @@ class GlyphBot(discord.Client):
             return
         # Check if the message should be replied to
         if self.user in message.mentions or message.channel.is_private:
-            # Get the member of the bot so the mention can be removed from the message
+            # Check cooldowns
             try:
-                member = discord.utils.get(message.server.members, id=self.user.id)
-                if member is None:
-                    member = self.user
-            except AttributeError:
-                member = self.user
+                cooldown = lambda property: self.cooldowns.get(message.author).get(property)
+                if cooldown("time") > datetime.utcnow():
+                    if not cooldown("warned"):
+                        self.cooldowns.update(
+                            {message.author: {"time": cooldown("time"), "warned": True}})
+                        remaining = (cooldown("time") - datetime.now()).seconds % 60
+                        await self.safe_send_message(message.channel,
+                                                     f"You are being ratelimited {message.author.mention}! "
+                                                     f"Wait {remaining} seconds.")
+                    return
+            except (KeyError, TypeError, AttributeError):
+                pass
+            self.cooldowns.update({message.author: {"time": datetime.utcnow() + timedelta(seconds=4), "warned": False}})
+            # Get the member of the bot so the mention can be removed from the message
+            member = await self.get_self_member(message.channel)
             # Check it the mention is at the beginning of the message and don't reply if not
             if not message.clean_content.startswith("@{}".format(member.display_name)) and not message.channel.is_private:
                 return

@@ -81,10 +81,24 @@ async def purge(bot, message, ai, config):
     return
 
 
+@register("moderation.user_info")
+async def user_info(bot, message, ai, config):
+    try:
+        member = bot.get_clean_mentions(message)[0]
+    except IndexError:
+        member = message.author
+    embed = discord.Embed(title="User Info",
+                          description=bot.auditor.get_user_info(member),
+                          timestamp=datetime.utcnow())
+    embed.set_thumbnail(url=member.avatar_url)
+    embed.set_footer(text="Moderation")
+    await bot.safe_send_message(message.channel, embed=embed)
+
+
 @register("moderation.kick")
 async def kick(bot, message, ai, config):  # Not finished!
     try:
-        member = bot.get_clean_mentions(message)
+        member = bot.get_clean_mentions(message)[0]
     except IndexError:
         await bot.safe_send_message(message.channel, "Sorry, can't find a user to kick.")
         return
