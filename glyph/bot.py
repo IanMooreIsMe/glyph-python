@@ -31,6 +31,7 @@ class GlyphBot(discord.Client):
         self.removable_messages = []
         self.deletewith_messages = {}
         self.cooldowns = {}
+        self.incompletes = set()
         self.total_members = lambda: sum(1 for i in self.get_all_members())
         self.total_servers = lambda: len(self.servers)
         self.ready = False
@@ -283,7 +284,7 @@ class GlyphBot(discord.Client):
                     pass
             return
         # Check if the message should be replied to
-        if self.user in message.mentions or message.channel.is_private:
+        if self.user in message.mentions or message.channel.is_private or message.author in self.incompletes:
             # Check cooldowns
             try:
                 cooldown = lambda property: self.cooldowns.get(message.author).get(property)
@@ -298,11 +299,11 @@ class GlyphBot(discord.Client):
                     return
             except (KeyError, TypeError, AttributeError):
                 pass
-            self.cooldowns.update({message.author: {"time": datetime.utcnow() + timedelta(seconds=4), "warned": False}})
             # Get the member of the bot so the mention can be removed from the message
             member = await self.get_self_member(message.channel)
             # Check it the mention is at the beginning of the message and don't reply if not
-            if not message.clean_content.startswith("@{}".format(member.display_name)) and not message.channel.is_private:
+            if not message.clean_content.startswith("@{}".format(member.display_name)) \
+                    and not (message.channel.is_private or message.author in self.incompletes):
                 return
             # Start by typing to indicate processing a successful message
             await self.safe_send_typing(message.channel)
@@ -325,6 +326,15 @@ class GlyphBot(discord.Client):
                                                               "Please try again later.")
                 return
             # Do the action given by api.ai
+            if ai.action_incomplete:
+                self.incompletes.add(message.author)
+            else:
+                self.cooldowns.update(
+                    {message.author: {"time": datetime.utcnow() + timedelta(seconds=4), "warned": False}})
+                try:
+                    self.incompletes.remove(message.author)
+                except KeyError:
+                    pass
             await self.skill_commander.process(message, ai, config)
 
     def get_clean_mentions(self, message):
