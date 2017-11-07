@@ -1,7 +1,7 @@
 import asyncio
 import logging
 import re
-from datetime import datetime, timedelta
+from datetime import datetime
 from importlib import import_module
 from json.decoder import JSONDecodeError
 from os import environ
@@ -12,6 +12,7 @@ import requests
 from . import apiai
 from . import auditing
 from . import fa
+from . import orchestrators
 from . import picarto
 from .serverconfig import ConfigDatabase
 
@@ -28,10 +29,7 @@ class GlyphBot(discord.Client):
         self.auditor = auditing.Auditor(self)
         self.apiai = apiai.AIProcessor(client_access_token=environ.get("APIAI_TOKEN"))
         self.configdb = ConfigDatabase(environ.get("DATABASE_URL"))
-        self.removable_messages = []
-        self.deletewith_messages = {}
-        self.cooldowns = {}
-        self.incompletes = set()
+        self.messaging = orchestrators.MessagingOrchestrator(self, log)
         self.total_members = lambda: sum(1 for i in self.get_all_members())
         self.total_servers = lambda: len(self.servers)
         self.ready = False
@@ -58,127 +56,6 @@ class GlyphBot(discord.Client):
             log.info("Updated Discord Bots count with {} servers!".format(count))
         else:
             log.warning("Failed to update Discord Bots server count with error code {}!".format(req.status_code))
-
-    async def safe_send_typing(self, destination):
-        if destination is None:
-            log.error("Send typing needs a destination!")
-            return None
-        try:
-            await self.send_typing(destination)
-        except discord.Forbidden:
-            log.warning("{} - {}: Cannot send typing, no permission?".format(destination.server, destination.name))
-        except discord.NotFound:
-            log.warning("{} - {}: Cannot send typing, invalid channel?".format(destination.server, destination.name))
-        except discord.HTTPException:
-            log.warning("{} - {}: Cannot send typing, failed.".format(destination.server, destination.name))
-
-    async def safe_send_message(self, destination, content=None, *, embed=None, expire_time=0, removable=False,
-                                deletewith=None):
-        if content is None and embed is None:
-            log.error("A message needs to have content!")
-            return None
-        elif embed is not None and removable and not expire_time:
-            if embed.footer.text is not discord.Embed.Empty:
-                embed.set_footer(text="React \u274C to remove | {}".format(embed.footer.text))
-            else:
-                embed.set_footer(text="React \u274C to remove")
-        msg = None
-        try:
-            if destination.permissions_for(await self.get_self_member(destination)).embed_links:
-                msg = await self.send_message(destination, content, embed=embed)
-            elif embed is not None:
-                try:
-                    tabulated_description = embed.description.replace("\n", "\n\t")
-                except AttributeError:
-                    tabulated_description = None
-                msg = await self.send_message(destination, f"**Title** \n\t{embed.title}\n"
-                                                           f"**Description** \n\t{tabulated_description}\n"
-                                                           f"**Images** \n\t{embed.image.url}\n\t{embed.thumbnail.url}"
-                                                           f"\n*No embed permission compatibility mode, "
-                                                           f"please grant embed permission*")
-            else:
-                msg = await self.send_message(destination, content)
-
-            if msg and deletewith:
-                self.deletewith_messages.update({deletewith.id: msg})
-            if msg and expire_time:
-                await asyncio.sleep(expire_time)
-                await self.delete_message(msg)
-            elif msg and removable:
-                self.removable_messages.append(msg.id)
-        except discord.Forbidden:
-            log.warning("{} - {}: Cannot send message, no permission?".format(destination.server, destination.name))
-        except discord.NotFound:
-            log.warning("{} - {}: Cannot send message, invalid channel?".format(destination.server, destination.name))
-        except discord.HTTPException:
-            log.warning("{} - {}: Cannot send message, failed.".format(destination.server, destination.name))
-
-        return msg
-
-    async def safe_edit_message(self, message, new=None, *,
-                                embed=None, expire_time=0, clear_reactions=False, removable=False):
-        if message is None:
-            return
-        elif embed is not None and removable and not expire_time:
-            if embed.footer.text is not discord.Embed.Empty:
-                embed.set_footer(text="React \u274C to remove | {}".format(embed.footer.text))
-            else:
-                embed.set_footer(text="React \u274C to remove")
-        msg = None
-        if clear_reactions:
-            await self.safe_clear_reactions(message)
-        try:
-            msg = await self.edit_message(message, new, embed=embed)
-
-            if msg and expire_time:
-                await asyncio.sleep(expire_time)
-                await self.delete_message(msg)
-            elif msg and removable:
-                self.removable_messages.append(msg.id)
-        except discord.NotFound:
-            log.warning("Cannot edit message \"{}\", message not found".format(message.clean_content))
-        except discord.HTTPException:
-            log.warning("Cannot edit message \"{}\", failed.".format(message.clean_content))
-
-        return msg
-
-    async def safe_delete_message(self, message):
-        try:
-            return await self.delete_message(message)
-        except discord.Forbidden:
-            log.warning("Cannot delete message \"{}\", no permission?".format(message.clean_content))
-        except discord.NotFound:
-            log.warning("Cannot delete message \"{}\", invalid channel?".format(message.clean_content))
-        except discord.HTTPException:
-            log.warning("Cannot delete message \"{}\", failed.".format(message.clean_content))
-
-    async def safe_purge_from(self, channel, *, limit=100, check=None, before=None, after=None, around=None):
-        purges = None
-        try:
-            purges = await self.purge_from(channel, limit=limit, check=check, before=before, after=after, around=around)
-        except discord.Forbidden:
-            log.warning("{} - {}: Cannot purge messages, no permission?".format(channel.server, channel.name))
-        except discord.NotFound:
-            log.warning("{} - {}: Cannot purge messages, invalid channel?".format(channel.server, channel.name))
-        return purges
-
-    async def safe_add_reaction(self, message, emoji):
-        reaction = None
-        channel = message.channel
-        try:
-            reaction = await self.add_reaction(message, emoji)
-        except discord.Forbidden:
-            log.warning("{} - {}: Cannot add reaction, no permission?".format(channel.server, channel.name))
-        except discord.NotFound:
-            log.warning("{} - {}: Cannot add reaction, invalid message or emoji?".format(channel.server, channel.name))
-        return reaction
-
-    async def safe_clear_reactions(self, message):
-        channel = message.channel
-        try:
-            await self.clear_reactions(message)
-        except discord.Forbidden:
-            log.warning("{} - {}: Cannot clear reactions, no permission?".format(channel.server, channel.name))
 
     async def safe_kick(self, member):
         kick = None
@@ -241,6 +118,7 @@ class GlyphBot(discord.Client):
         return member
 
     async def on_message(self, message):
+        message = orchestrators.EnhancedMessage(self, message)
         if not self.ready:
             return
         # Don't talk to yourself
@@ -306,7 +184,7 @@ class GlyphBot(discord.Client):
                     and not (message.channel.is_private or message.author in self.incompletes):
                 return
             # Start by typing to indicate processing a successful message
-            await self.safe_send_typing(message.channel)
+            await self.messaging.send_typing(message)
             # Remove the mention from the message so it can be processed right
             clean_message = re.sub("@{}".format(member.display_name), "", message.clean_content).strip()
             if not clean_message:  # If there's no message
@@ -322,36 +200,20 @@ class GlyphBot(discord.Client):
             try:
                 ai = self.apiai.query(clean_message, message.author.id)
             except JSONDecodeError:  # api.ai is down
-                await self.safe_send_message(message.channel, "Sorry, it appears api.ai is currently unavailable.\n"
-                                                              "Please try again later.")
+                await self.messaging.reply(message, "Sorry, it appears api.ai is currently unavailable.\n"
+                                                     "Please try again later.")
                 return
             # Do the action given by api.ai
-            if ai.action_incomplete:
-                self.incompletes.add(message.author)
-            else:
-                self.cooldowns.update(
-                    {message.author: {"time": datetime.utcnow() + timedelta(seconds=4), "warned": False}})
-                try:
-                    self.incompletes.remove(message.author)
-                except KeyError:
-                    pass
+            # if ai.action_incomplete:
+            #     self.incompletes.add(message.author)
+            # else:
+            #     self.cooldowns.update(
+            #         {message.author: {"time": datetime.utcnow() + timedelta(seconds=4), "warned": False}})
+            #     try:
+            #         self.incompletes.remove(message.author)
+            #     except KeyError:
+            #         pass
             await self.skill_commander.process(message, ai, config)
-
-    def get_clean_mentions(self, message):
-        # Get the member of the bot so the mention can be removed from the message
-        try:
-            member = discord.utils.get(message.server.members, id=self.user.id)
-            if member is None:
-                member = self.user
-        except AttributeError:
-            member = self.user
-            # Remove self from the list of mentions in the message
-        clean_mentions = message.mentions
-        try:
-            clean_mentions.remove(member)
-        except ValueError:
-            pass
-        return clean_mentions
 
     async def on_member_join(self, member):
         if not self.ready:

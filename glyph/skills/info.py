@@ -9,7 +9,7 @@ from .commander import register
 
 
 @register("help")
-async def info(bot, message, ai, config):
+async def info(client, message, ai, config):
     help_file = path.join(path.dirname(path.abspath(__file__)), "text/help.txt")
     with open(help_file, "r") as file:
         text = file.read()
@@ -17,18 +17,18 @@ async def info(bot, message, ai, config):
         title="Glyph Help",
         description=text,
         colour=0x4286F4)
-    await bot.safe_send_message(message.channel, embed=embed)
+    await client.messaging.reply(message, embed=embed)
 
 
 @register("status")
-async def status(bot, message, ai, config):
+async def status(client, message, ai, config):
     def status_embed(ping):
         process = psutil.Process(getpid())
         last_restart_timedelta = datetime.now() - datetime.fromtimestamp(process.create_time())
         last_restart = humanize.naturaltime(last_restart_timedelta)
-        servers = humanize.intcomma(bot.total_servers())
-        members = humanize.intcomma(bot.total_members())
-        messages = len(bot.messages)
+        servers = humanize.intcomma(client.total_servers())
+        members = humanize.intcomma(client.total_members())
+        messages = len(client.messages)
         memory = psutil.virtual_memory()
         memory_total = humanize.naturalsize(memory.total)
         memory_used = humanize.naturalsize(memory.used)
@@ -52,6 +52,6 @@ async def status(bot, message, ai, config):
         return embed
 
     start = datetime.now().microsecond
-    msg = await bot.safe_send_message(message.channel, embed=status_embed("?"))
+    msg = await client.messaging.reply(message, embed=status_embed("?"))
     diff = int((datetime.now().microsecond - start) / 1000)
-    await bot.safe_edit_message(msg, embed=status_embed(diff))
+    await client.messaging.edit_message(msg, embed=status_embed(diff))

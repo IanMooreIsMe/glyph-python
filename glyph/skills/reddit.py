@@ -10,14 +10,13 @@ from .commander import register
 
 
 @register("reddit")
-async def send_image(bot, message, ai, config):
+async def send_image(message):
     r = praw.Reddit(client_id=environ.get("REDDIT_CLIENT_ID"),
                     client_secret=environ.get("REDDIT_SECRET"),
                     user_agent=environ.get("REDDIT_USER_AGENT"))
-    multireddit = ai.get_parameter("multireddit")
+    multireddit = message.ai.get_parameter("multireddit")
     if multireddit is None:
-        await bot.safe_send_message(message.channel, "I think you wanted an image from Reddit, "
-                                                          "but I'm not sure of what. Sorry.")
+        await message.reply("I think you wanted an image from Reddit, but I'm not sure of what. Sorry.")
         return
     try:
         nsfw_subreddit = [s for s in multireddit.split("+") if r.subreddit(s).over18]
@@ -26,8 +25,7 @@ async def send_image(bot, message, ai, config):
         except TypeError:
             nswf_channel = False
         if nsfw_subreddit and not nswf_channel:
-            await self.bot.safe_send_message(message.channel, "You must be in a NSFW channel "
-                                                              "to view images from `{}`".format(multireddit))
+            await message.reply(f"You must be in a NSFW channel to view images from `{multireddit}`")
             return
         for i in range(1, 20):  # Get an image that can be embedded
             try:
@@ -42,15 +40,14 @@ async def send_image(bot, message, ai, config):
                 embed.set_image(url=submission.url)
                 suggestion = r.subreddit("popular").random().subreddit.display_name
                 embed.set_footer(text="r/{} | Try asking \"r/{}\"".format(submission.subreddit, suggestion))
-                await bot.safe_send_message(message.channel, embed=embed, deletewith=message)
+                await message.reply(embed=embed)
                 break
         else:
-            await bot.safe_send_message(message.channel, "Sorry, I took too long to try to find an image.")
+            await message.reply("Sorry, I took too long to try to find an image.")
     except (prawcore.exceptions.NotFound, prawcore.exceptions.Redirect):
-        await bot.safe_send_message(message.channel,
-                                         "You provided an unknown or invalid subreddit `{}`.".format(multireddit))
+        await message.reply(f"You provided an unknown or invalid subreddit `{multireddit}`.")
     except prawcore.exceptions.Forbidden:
-        await bot.safe_send_message(message.channel, "Sorry, but `{}` is a private community and so "
-                                                          "I can not grab a photo from there.".format(multireddit))
+        await message.reply(f"Sorry, but `{multireddit}` is a private community "
+                            f"and so I can not grab a photo from there.")
     except (praw.exceptions.ClientException, praw.exceptions.APIException):
-        await bot.safe_send_message(message.channel, "Sorry, I had an issue communicating with Reddit.")
+        await message.reply("Sorry, I had an issue communicating with Reddit.")

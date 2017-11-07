@@ -11,27 +11,28 @@ log.addHandler(ch)
 
 class SkillCommander(object):
 
-    def __init__(self, bot):
-        self.bot = bot
+    def __init__(self, client):
+        self.client = client
         # self.reddit = reddit.RedditSkill(bot)
         self.skills = {}
 
     async def process(self, message, ai, config):
         action = ai.get_action_depth(0)
         if "ignore" in str(ai.contexts) and not ai.get_action_depth(1) == "insult":  # If ignoring the user
-            await self.bot.safe_send_message(message.channel,
-                                             "No {}, I'm done helping you for now.".format(message.author.mention))
+            await self.client.messaging.reply(message, f"No {message.author.mention}, I'm done helping you for now.")
         elif action == "skill" and not ai.action_incomplete:  # If not ignoring the user and no follow up intent
             skill = ai.get_skill()
             try:
-                await _skills[skill](self.bot, message, ai, config)
+                message.__setattr__("ai", ai)
+                message.__setattr__("config", config)
+                await _skills[skill](message)
             except KeyError:
-                await self.bot.safe_send_message(
-                    message.channel,
-                    "<:confusablob:341765305711722496> "
-                    "Odd, you seem to have triggered `{}`, a skill that isn't currently available.".format(skill))
+                await self.client.messaging.reply(message,
+                                                  f"<:confusablob:341765305711722496> "
+                                                  f"Odd, you seem to have triggered `{skill}`, "
+                                                  f"a skill that isn't currently available.")
         else:
-            await self.bot.safe_send_message(message.channel, ai.response)
+            await message.reply(ai.response)
 
 
 def register(action):

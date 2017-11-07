@@ -8,24 +8,21 @@ from .commander import register
 
 
 @register("role.set")
-async def change_role(bot, message, ai, config):
-    desired_role = ai.get_parameter("role")
-    selectable_roles = config["roles"]["selectable"]
+async def change_role(message):
+    desired_role = message.ai.get_parameter("role")
+    selectable_roles = message.config["roles"]["selectable"]
     try:
-        target_user = bot.get_clean_mentions(message)[0]
+        target_user = message.clean_mentions[0]
     except IndexError:
         target_user = message.author
     if message.channel.is_private:  # You can't set a role, if you're not in a server
-        await bot.safe_send_message(message.channel, "<:xmark:344316007164149770> "
-                                                     "You must be in a server to set a role.")
+        await message.reply("<:xmark:344316007164149770> You must be in a server to set a role.")
         return
     if not target_user == message.author and not message.author.permissions_in(message.channel).manage_roles:
-        await bot.safe_send_message(message.channel,
-                                    "You don't have permission to set {}'s role.".format(target_user.name))
+        await message.reply("You don't have permission to set {}'s role.".format(target_user.name))
         return
     if desired_role is None:
-        await bot.safe_send_message(message.channel,
-                                    "Sorry, I can not seem to find a desired role in your message.")
+        await message.reply("Sorry, I can not seem to find a desired role in your message.")
         return
     # TODO: Check permissions and improve safe remove and add permissions
     allowed_roles = list(filter(lambda x: x.name.lower() in map(str.lower, selectable_roles), message.server.roles))
@@ -34,39 +31,35 @@ async def change_role(bot, message, ai, config):
     except IndexError:
         new_role = None
     if not allowed_roles:
-        await bot.safe_send_message(message.channel, "Sorry, but this server has no available roles configured.")
+        await message.reply("Sorry, but this server has no available roles configured.")
     elif new_role is None or new_role not in allowed_roles:
-        await bot.safe_send_message(message.channel,
-                                    "Sorry, but `{}` is not an available role.".format(desired_role))
+        await message.reply(f"Sorry, but `{desired_role}` is not an available role.")
         # await list_roles(bot, message, allowed_roles)  # TODO: Fix
     else:
-        await bot.safe_remove_roles(target_user, *allowed_roles)  # Remove all old roles
+        await message.client.safe_remove_roles(target_user, *allowed_roles)  # Remove all old roles
         await asyncio.sleep(.2)  # Wait because of rate limiting
-        role_set = await bot.safe_add_roles(target_user, new_role)  # Add the new role
+        role_set = await message.client.safe_add_roles(target_user, new_role)  # Add the new role
         if role_set:
-            role_change_message = "{} you are now a {}!".format(target_user.name, new_role.name)
+            role_change_message = f"{target_user.name} you are now a {new_role.name}!"
             role_change_embed = discord.Embed(
                 title="Poof!", description=role_change_message, colour=0x42F465, timestamp=datetime.now())
             role_change_embed.set_thumbnail(url=target_user.avatar_url)
             role_change_embed.set_footer(text="Roles Skill")
-            await bot.safe_send_message(message.channel, embed=role_change_embed)
+            await message.reply(embed=role_change_embed)
         else:
-            await bot.safe_send_message(message.channel,
-                                        "Sorry, I can not assign the role `{}`.".format(desired_role))
+            await message.reply("Sorry, I can not assign the role `{}`.".format(desired_role))
             # await list_roles(bot, message, allowed_roles)
 
 
 @register("role.list")
-async def list_roles(bot, message, ai, config):
-    selectable_roles = config["roles"]["selectable"]
+async def list_roles(message):
+    selectable_roles = message.config["roles"]["selectable"]
     if message.channel.is_private:  # You can't list roles, if you're not in a server
-        await bot.safe_send_message(message.channel, "<:xmark:344316007164149770> "
-                                                     "You must be in a server to list roles.")
+        await message.reply("<:xmark:344316007164149770> You must be in a server to list roles.")
         return
     allowed_roles = list(filter(lambda x: x.name in selectable_roles, message.server.roles))
     if not allowed_roles:
-        await bot.safe_send_message(message.channel, "Sorry, but {} has no "
-                                                     "available roles configured.".format(message.server.name))
+        await message.reply(f"Sorry, but {message.server.name} has no available roles configured.")
     else:
         friendly_available_roles = ""
         for role in allowed_roles:
@@ -76,4 +69,4 @@ async def list_roles(bot, message, ai, config):
                               timestamp=datetime.utcnow())
         try_role = random.choice(allowed_roles)
         embed.set_footer(text="Roles Skill | Try asking \"Set me as {}\"".format(try_role))
-        await bot.safe_send_message(message.channel, embed=embed)
+        await message.reply(embed=embed)

@@ -1,4 +1,4 @@
-discord.py==0.16.11
+discord.py==0.16.12
 apiai
 numpy
 praw==5.1.0

@@ -9,14 +9,14 @@ from .commander import register
 
 
 @register("moderation.purge")
-async def purge(bot, message, ai, config):
-    duration = ai.get_parameter("text_time")
+async def purge(message):
+    duration = message.ai.get_parameter("text_time")
     channel = message.channel
     if not message.author.permissions_in(channel).manage_messages and not channel.is_private:
-        await bot.safe_send_message(channel, "You don't have permission to purge messages!")
+        await message.reply("You don't have permission to purge messages!")
         return
     if channel.is_private:
-        await bot.safe_send_message(channel, "Sorry, I can not purge messages in a DM")
+        await message.reply("Sorry, I can not purge messages in a DM")
         return
 
     def text_to_time(text):
@@ -55,44 +55,45 @@ async def purge(bot, message, ai, config):
                                           "You can only bulk delete messages that are under 14 days old.",
                               timestamp=datetime.utcnow())
         embed.set_footer(text="Moderation | Try asking \"purge 14d\"")
-        await bot.safe_send_message(channel, embed=embed)
+        await message.reply(embed=embed)
         return
     embed = discord.Embed(title="Purging",
                           description="<:empty:344316006438797314> "
                                       "Purging everything since {}.".format(humanize.naturaltime(time)),
                           timestamp=datetime.utcnow())
     embed.set_footer(text="Moderation")
-    status = await bot.safe_send_message(channel, embed=embed)
-    deleted = await bot.safe_purge_from(channel, limit=100000, after=time, check=lambda msg: msg.id != status.id)
+    status = await message.reply(embed=embed)
+    deleted = await message.client.messaging.purge_from(channel, limit=100000, after=time,
+                                                   check=lambda msg: msg.id != status.id)
     if deleted:
         embed = discord.Embed(title="Purge Successful",
                               description="<:check:344316006040338434> "
                                           "Purged {} messages since {}.".format(len(deleted), humanize.naturaltime(time)),
                               timestamp=datetime.utcnow())
         embed.set_footer(text="Moderation")
-        await bot.safe_edit_message(status, embed=embed)
+        await message.client.safe_edit_message(status, embed=embed)
     else:
         embed = discord.Embed(title="Purge Failed",
                               description="<:xmark:344316007164149770> Either I was given an invalid duration or "
                                           "I don't have Manage Messages permission!",
                               timestamp=datetime.utcnow())
         embed.set_footer(text="Moderation")
-        await bot.safe_edit_message(status, embed=embed)
+        await message.client.messaging.edit_message(status, embed=embed)
     return
 
 
 @register("moderation.user_info")
-async def user_info(bot, message, ai, config):
+async def user_info(message):
     try:
-        member = bot.get_clean_mentions(message)[0]
+        member = message.clean_mentions[0]
     except IndexError:
         member = message.author
     embed = discord.Embed(title="User Info",
-                          description=bot.auditor.get_user_info(member),
+                          description=message.client.auditor.get_user_info(member),
                           timestamp=datetime.utcnow())
     embed.set_thumbnail(url=member.avatar_url)
     embed.set_footer(text="Moderation")
-    await bot.safe_send_message(message.channel, embed=embed)
+    await message.reply(embed=embed)
 
 
 @register("moderation.kick")
@@ -124,11 +125,11 @@ async def kick(bot, message, ai, config):  # Not finished!
 @register("configuration.load")
 @utils.server_only
 @utils.admin_only
-async def load_config(bot, message, ai, config):
+async def load_config(message):
     haste_regex = re.compile(r"hastebin.com\/(\w{10})")
     try:
         haste = haste_regex.search(ai.get_parameter("url"))
-        result = bot.configdb.inhaste(message.server, haste.group(1))
+        result = message.client.configdb.inhaste(message.server, haste.group(1))
         if result == "Success!":
             embed = discord.Embed(title="Configuration Update Success",
                                   description="Successfully updated this servers configuration!",
@@ -150,15 +151,15 @@ async def load_config(bot, message, ai, config):
                                   color=0xFF0000,
                                   timestamp=datetime.utcnow())
         embed.set_footer(text="Configuration")
-        await bot.safe_send_message(message.channel, embed=embed)
+        await message.reply(embed=embed)
     except KeyError:
-        await bot.safe_send_message(message.channel, "Sorry, but that url is wrong for me to load a info from.")
+        await message.reply("Sorry, but that url is wrong for me to load a info from.")
 
 
 @register("configuration.view")
 @utils.server_only
 @utils.admin_only
-async def view_config(bot, message, ai, config):
+async def view_config(message):
     embed = discord.Embed(title="Configuration Viewer",
                           description="Here's the current info: {}\n"
                                       "**Help:** "
@@ -167,6 +168,6 @@ async def view_config(bot, message, ai, config):
                                       "/en/latest/configuration.html) "
                                       "- [Official Glyph Server]"
                                       "(https://discord.me/glyph-discord)".format(
-                              bot.configdb.outhaste(message.server)),
+                                        message.client.configdb.outhaste(message.server)),
                           timestamp=datetime.utcnow())
-    await bot.safe_send_message(message.channel, embed=embed)
+    await message.reply(embed=embed)

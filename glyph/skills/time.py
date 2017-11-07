@@ -8,10 +8,10 @@ from .commander import register
 
 
 @register("time")
-async def get(bot, message, ai, config):
+async def get(message):
     title = "UTC Time"
     # timestamp = datetime.utcnow()
-    timezone = ai.get_parameter("timezone")
+    timezone = message.ai.get_parameter("timezone")
     time = datetime.utcnow()
     try:
         if timezone:
@@ -23,4 +23,4 @@ async def get(bot, message, ai, config):
     embed = discord.Embed(title=title, description=time.strftime("**%H:%M:%S** on %A %B %d %Y"))
     try_tz = random.choice(pytz.common_timezones)
     embed.set_footer(text="Time | Try asking \"{} time\"".format(try_tz))
-    await bot.safe_send_message(message.channel, embed=embed)
+    await message.reply(embed=embed)
