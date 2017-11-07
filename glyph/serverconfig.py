@@ -9,6 +9,8 @@ from . import hastebin
 
 class ConfigDatabase(object):
 
+    __slots__ = ["url", "conn", "cur", "configs"]
+
     def __init__(self, url):
         urllib.parse.uses_netloc.append("postgres")
         self.url = urllib.parse.urlparse(url)

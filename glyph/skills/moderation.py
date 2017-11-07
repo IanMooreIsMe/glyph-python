@@ -78,7 +78,7 @@ async def purge(message):
                                           "I don't have Manage Messages permission!",
                               timestamp=datetime.utcnow())
         embed.set_footer(text="Moderation")
-        await message.client.messaging.edit_message(status, embed=embed)
+        await message.client.messaging.edit(status, embed=embed)
     return
 
 
@@ -128,7 +128,7 @@ async def kick(bot, message, ai, config):  # Not finished!
 async def load_config(message):
     haste_regex = re.compile(r"hastebin.com\/(\w{10})")
     try:
-        haste = haste_regex.search(ai.get_parameter("url"))
+        haste = haste_regex.search(message.ai.get_parameter("url"))
         result = message.client.configdb.inhaste(message.server, haste.group(1))
         if result == "Success!":
             embed = discord.Embed(title="Configuration Update Success",

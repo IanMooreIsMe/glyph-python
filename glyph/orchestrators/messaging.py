@@ -3,7 +3,9 @@ import asyncio
 import discord
 
 
-class MessagingOrchestrator(object):
+class MessagingOrchestrator:
+
+    __slots__ = ["client", "log", "ledger", "cooldowns", "incompletes"]
 
     def __init__(self, client, logger):
         self.client = client
@@ -26,7 +28,7 @@ class MessagingOrchestrator(object):
         except discord.HTTPException:
             self.log.warning("{} - {}: Cannot send typing, failed.".format(destination.server, destination.name))
 
-    async def reply(self, message, content=None, *, embed=None, expire_time=0):
+    async def send(self, message, content=None, *, embed=None, expire_time=0):
         destination = message.channel
 
         if content is None and embed is None:
@@ -62,25 +64,19 @@ class MessagingOrchestrator(object):
 
         return msg
 
-    async def edit_message(self, message, new=None, *, embed=None, expire_time=0, clear_reactions=False):
+    async def edit(self, message, new=None, *, embed=None, expire_time=0, clear_reactions=False):
         if message is None:
             return
-        elif embed is not None and removable and not expire_time:
-            if embed.footer.text is not discord.Embed.Empty:
-                embed.set_footer(text="React \u274C to remove | {}".format(embed.footer.text))
-            else:
-                embed.set_footer(text="React \u274C to remove")
+
         msg = None
         if clear_reactions:
-            await self.safe_clear_reactions(message)
+            await self.clear_reactions(message)
         try:
-            msg = await self.client.edit_message(message, new, embed=embed)
+            msg = await self.client.edit(message, new, embed=embed)
 
             if msg and expire_time:
                 await asyncio.sleep(expire_time)
-                await self.client.delete_message(msg)
-            elif msg and removable:
-                self.client.removable_messages.append(msg.id)
+                await self.client.delete(msg)
         except discord.NotFound:
             self.log.warning("Cannot edit message \"{}\", message not found".format(message.clean_content))
         except discord.HTTPException:
@@ -88,9 +84,9 @@ class MessagingOrchestrator(object):
 
         return msg
 
-    async def delete_message(self, message):
+    async def delete(self, message):
         try:
-            return await self.client.delete_message(message)
+            return await self.client.delete(message)
         except discord.Forbidden:
             self.log.warning("Cannot delete message \"{}\", no permission?".format(message.clean_content))
         except discord.NotFound:
@@ -129,6 +125,8 @@ class MessagingOrchestrator(object):
 
 class EnhancedMessage(discord.Message):
 
+    __slots__ = discord.Message.__slots__ + ["client", "clean_mentions", "ai", "config"]
+
     def __init__(self, client, message):
         super().__init__(reactions=message.reactions)
         self.client = client
@@ -138,7 +136,10 @@ class EnhancedMessage(discord.Message):
                 self.__setattr__(slot, getattr(message, slot))
 
     async def reply(self, content=None, *, embed=None):
-        await self.client.messaging.reply(self, content=content, embed=embed)
+        await self.client.messaging.send(self, content=content, embed=embed)
+
+    async def delete(self):
+        await self.client.messaging.delete(self)
 
     def _get_clean_mentions(self):
         # Get the member of the bot so the mention can be removed from the message

@@ -33,7 +33,8 @@ class GlyphBot(discord.Client):
         self.total_members = lambda: sum(1 for i in self.get_all_members())
         self.total_servers = lambda: len(self.servers)
         self.ready = False
-        self.skill_commander = None
+        skills = import_module(".skills", "glyph")
+        self.skill_commander = skills.SkillCommander()
         super().__init__()
 
     async def update_server_count(self):
@@ -104,8 +105,6 @@ class GlyphBot(discord.Client):
         log.info("Loaded {} configurations from the database.".format(len(self.configdb.configs)))
         await self.update_server_count()
         log.info("Connected to {} server(s) with {} members.".format(self.total_servers(), self.total_members()))
-        skills = import_module(".skills", "glyph")
-        self.skill_commander = skills.SkillCommander(self)
         self.ready = True
 
     async def get_self_member(self, channel):
@@ -118,9 +117,9 @@ class GlyphBot(discord.Client):
         return member
 
     async def on_message(self, message):
-        message = orchestrators.EnhancedMessage(self, message)
         if not self.ready:
             return
+        message = orchestrators.EnhancedMessage(self, message)
         # Don't talk to yourself
         if message.author == self.user or message.author.bot:
             return
