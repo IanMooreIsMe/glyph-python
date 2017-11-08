@@ -2,18 +2,13 @@ import asyncio
 import logging
 import re
 from datetime import datetime
-from importlib import import_module
 from json.decoder import JSONDecodeError
 from os import environ
 
 import discord
 import requests
 
-from . import apiai
-from . import auditing
-from . import fa
-from . import orchestrators
-from . import picarto
+from . import apiai, auditing, fa, orchestrators, picarto, skills
 from .serverconfig import ConfigDatabase
 
 log = logging.getLogger(__name__)
@@ -30,10 +25,9 @@ class GlyphBot(discord.Client):
         self.apiai = apiai.AIProcessor(client_access_token=environ.get("APIAI_TOKEN"))
         self.configdb = ConfigDatabase(environ.get("DATABASE_URL"))
         self.messaging = orchestrators.MessagingOrchestrator(self, log)
-        self.total_members = lambda: sum(1 for i in self.get_all_members())
+        self.total_members = lambda: sum(1 for _ in self.get_all_members())
         self.total_servers = lambda: len(self.servers)
         self.ready = False
-        skills = import_module(".skills", "glyph")
         self.skill_commander = skills.SkillCommander()
         super().__init__()
 
@@ -164,15 +158,15 @@ class GlyphBot(discord.Client):
         if self.user in message.mentions or message.channel.is_private or message.author in self.incompletes:
             # Check cooldowns
             try:
-                cooldown = lambda property: self.cooldowns.get(message.author).get(property)
+                def cooldown(prop):
+                    return self.cooldowns.get(message.author).get(prop)
                 if cooldown("time") > datetime.utcnow():
                     if not cooldown("warned"):
                         self.cooldowns.update(
                             {message.author: {"time": cooldown("time"), "warned": True}})
                         remaining = (cooldown("time") - datetime.now()).seconds % 60
-                        await self.safe_send_message(message.channel,
-                                                     f"You are being ratelimited {message.author.mention}! "
-                                                     f"Wait {remaining} seconds.")
+                        await message.reply("You are being ratelimited {}! Wait {} seconds.".format(
+                            message.author.mention, remaining))
                     return
             except (KeyError, TypeError, AttributeError):
                 pass
@@ -199,8 +193,7 @@ class GlyphBot(discord.Client):
             try:
                 ai = self.apiai.query(clean_message, message.author.id)
             except JSONDecodeError:  # api.ai is down
-                await self.messaging.reply(message, "Sorry, it appears api.ai is currently unavailable.\n"
-                                                     "Please try again later.")
+                await message.reply("Sorry, it appears api.ai is currently unavailable.\n Please try again later.")
                 return
             # Do the action given by api.ai
             # if ai.action_incomplete:

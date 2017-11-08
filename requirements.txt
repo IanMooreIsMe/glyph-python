@@ -1,8 +1,8 @@
-discord.py==0.16.12
+aiohttp
+discord.py
 apiai
-numpy
-praw==5.1.0
-wikia==1.4.3
+praw
+wikia
 humanize
 psutil
 pillow
@@ -10,4 +10,4 @@ pytz
 requests
 wikipedia
 wiktionaryparser
-psycopg2
+psycopg2cffi

@@ -24,7 +24,7 @@ async def search(message):
             embed.set_footer(text="Wikipedia | Try asking \"What is {}?\"".format(suggestion))
             await message.reply(embed=embed)
         except (ValueError, wikipedia.WikipediaException):
-            await message.reply(f"Sorry, I have no information for your search query `{query}`.")
+            await message.reply("Sorry, I have no information for your search query `{}`.".format(query))
         return
     elif query is None:
         await message.reply("Sorry, I couldn't find a search query.", expire_time=5)
@@ -42,7 +42,7 @@ async def search(message):
             embed.set_footer(text="{} wikia".format(wiki))
             await message.reply(embed=embed)
         except (ValueError, wikia.wikia.WikiaError):
-            await message.reply(f"Sorry, I have no information for your search query `{query}`.")
+            await message.reply("Sorry, I have no information for your search query `{}`.".format(query))
 
 
 # @register("define_word")

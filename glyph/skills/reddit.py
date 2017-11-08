@@ -25,7 +25,7 @@ async def send_image(message):
         except TypeError:
             nswf_channel = False
         if nsfw_subreddit and not nswf_channel:
-            await message.reply(f"You must be in a NSFW channel to view images from `{multireddit}`")
+            await message.reply("You must be in a NSFW channel to view images from `{}`".format(multireddit))
             return
         for i in range(1, 20):  # Get an image that can be embedded
             try:
@@ -45,9 +45,9 @@ async def send_image(message):
         else:
             await message.reply("Sorry, I took too long to try to find an image.")
     except (prawcore.exceptions.NotFound, prawcore.exceptions.Redirect):
-        await message.reply(f"You provided an unknown or invalid subreddit `{multireddit}`.")
+        await message.reply("You provided an unknown or invalid subreddit `{}`.".format(multireddit))
     except prawcore.exceptions.Forbidden:
-        await message.reply(f"Sorry, but `{multireddit}` is a private community "
-                            f"and so I can not grab a photo from there.")
+        await message.reply("Sorry, but `{}` is a private community and so I can not grab a photo from there.".format(
+            multireddit))
     except (praw.exceptions.ClientException, praw.exceptions.APIException):
         await message.reply("Sorry, I had an issue communicating with Reddit.")

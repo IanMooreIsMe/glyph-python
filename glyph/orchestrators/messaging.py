@@ -44,13 +44,12 @@ class MessagingOrchestrator:
                     tabulated_description = embed.description.replace("\n", "\n\t")
                 except AttributeError:
                     tabulated_description = None
-                msg = await self.client.send_message(destination, f"**Title** \n\t{embed.title}\n"
-                                                           f"**Description** \n\t{tabulated_description}\n"
-                                                           f"**Images** \n\t{embed.image.url}\n\t{embed.thumbnail.url}"
-                                                           f"\n*No embed permission compatibility mode, "
-                                                           f"please grant embed permission*")
+                msg = await message.reply("**Title** \n\t{}\n**Description** \n\t{}\n**Images** \n\t{}\n\t{}"
+                                          "\n*No embed permission compatibility mode, "
+                                          "please grant embed permission*".format(embed.title, tabulated_description,
+                                                                                  embed.image.url, embed.thumbnail.url))
             else:
-                msg = await self.client.send_message(destination, content)
+                msg = await message.reply(content)
 
             if msg and expire_time:
                 await asyncio.sleep(expire_time)

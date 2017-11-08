@@ -33,14 +33,14 @@ async def change_role(message):
     if not allowed_roles:
         await message.reply("Sorry, but this server has no available roles configured.")
     elif new_role is None or new_role not in allowed_roles:
-        await message.reply(f"Sorry, but `{desired_role}` is not an available role.")
+        await message.reply("Sorry, but `{}` is not an available role.".format(desired_role))
         # await list_roles(bot, message, allowed_roles)  # TODO: Fix
     else:
         await message.client.safe_remove_roles(target_user, *allowed_roles)  # Remove all old roles
         await asyncio.sleep(.2)  # Wait because of rate limiting
         role_set = await message.client.safe_add_roles(target_user, new_role)  # Add the new role
         if role_set:
-            role_change_message = f"{target_user.name} you are now a {new_role.name}!"
+            role_change_message = "{} you are now a {}!".format(target_user.name, new_role.name)
             role_change_embed = discord.Embed(
                 title="Poof!", description=role_change_message, colour=0x42F465, timestamp=datetime.now())
             role_change_embed.set_thumbnail(url=target_user.avatar_url)
@@ -59,7 +59,7 @@ async def list_roles(message):
         return
     allowed_roles = list(filter(lambda x: x.name in selectable_roles, message.server.roles))
     if not allowed_roles:
-        await message.reply(f"Sorry, but {message.server.name} has no available roles configured.")
+        await message.reply("Sorry, but {} has no available roles configured.".format(message.server.name))
     else:
         friendly_available_roles = ""
         for role in allowed_roles:

@@ -20,7 +20,7 @@ class SkillCommander:
     async def process(message, ai, config):
         action = ai.get_action_depth(0)
         if "ignore" in str(ai.contexts) and not ai.get_action_depth(1) == "insult":  # If ignoring the user
-            await message.reply(message, f"No {message.author.mention}, I'm done helping you for now.")
+            await message.reply("No {}, I'm done helping you for now.".format(message.author.mention))
         elif action == "skill" and not ai.action_incomplete:  # If not ignoring the user and no follow up intent
             skill = ai.get_skill()
             try:
@@ -28,8 +28,8 @@ class SkillCommander:
                 message.config = config
                 await _skills[skill](message)
             except KeyError:
-                await message.reply(message, f"<:confusablob:341765305711722496> Odd, you seem to have triggered "
-                                             f"`{skill}`, a skill that isn't currently available.")
+                await message.reply("<:confusablob:341765305711722496> Odd, you seem to have triggered `{}`, "
+                                    "a skill that isn't currently available.".format(skill))
         else:
             await message.reply(ai.response)
 
