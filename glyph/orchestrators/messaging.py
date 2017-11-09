@@ -100,7 +100,7 @@ class MessagingOrchestrator:
         except discord.HTTPException:
             self.log.warning("Cannot delete message \"{}\", failed.".format(message.clean_content))
 
-    async def purge(self, channel, *, limit=100, check=None, before=None, after=None, around=None):
+    async def purge_from(self, channel, *, limit=100, check=None, before=None, after=None, around=None):
         purges = None
         try:
             purges = await self.client.purge_from(channel, limit=limit, check=check, before=before, after=after, around=around)
