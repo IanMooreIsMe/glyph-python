@@ -123,10 +123,11 @@ class MessagingOrchestrator:
 
     async def clear_reactions(self, message):
         channel = message.channel
-        try:
-            await self.client.clear_reactions(message)
-        except discord.Forbidden:
-            self.log.warning("{} - {}: Cannot clear reactions, no permission?".format(channel.server, channel.name))
+        if not channel.is_private:
+            try:
+                await self.client.clear_reactions(message)
+            except discord.Forbidden:
+                self.log.warning("{} - {}: Cannot clear reactions, no permission?".format(channel.server, channel.name))
 
 
 class EnhancedMessage(discord.Message):
