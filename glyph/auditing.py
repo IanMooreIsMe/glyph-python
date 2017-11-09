@@ -39,7 +39,7 @@ class Auditor(object):
             embed.set_footer(text="Auditing")
             if user is not None:
                 embed.set_thumbnail(url=user.avatar_url)
-            await self.bot.safe_send_message(log_channel, embed=embed)
+            await self.bot.messaging.send_message(log_channel, embed=embed)
 
     @staticmethod
     def get_user_info(member):

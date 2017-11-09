@@ -71,7 +71,7 @@ async def purge(message):
                                           "Purged {} messages since {}.".format(len(deleted), humanize.naturaltime(time)),
                               timestamp=datetime.utcnow())
         embed.set_footer(text="Moderation")
-        await message.client.safe_edit_message(status, embed=embed)
+        await message.client.messaging.edit_message(status, embed=embed)
     else:
         embed = discord.Embed(title="Purge Failed",
                               description="<:xmark:344316007164149770> Either I was given an invalid duration or "
@@ -96,30 +96,30 @@ async def user_info(message):
     await message.reply(embed=embed)
 
 
-@register("moderation.kick")
-async def kick(bot, message, ai, config):  # Not finished!
-    try:
-        member = bot.get_clean_mentions(message)[0]
-    except IndexError:
-        await bot.safe_send_message(message.channel, "Sorry, can't find a user to kick.")
-        return
-    if message.channel.is_private:
-        await bot.safe_send_message(message.channel, "You have to be in a server to kick someone.")
-        return
-    elif not message.author.server_permissions.kick_members:
-        await bot.safe_send_message(message.channel, "You don't have permission to do kick people.")
-        return
-    # Get the user
-    if member is None:
-        try:
-            member = discord.utils.get(message.server.members, name=ai["entities"]["user"][0]["value"])
-        except KeyError:
-            await bot.safe_send_message(message.channel, "Sorry, I couldn't find a user to kick.")
-            return
-    # Kick the user
-    kick = await bot.safe_kick(member)
-    if kick:
-        await bot.safe_send_message(message.channel, ":ok_hand: ***{} has been kicked!***".format(member.mention))
+# @register("moderation.kick")
+# async def kick(bot, message, ai, config):  # Not finished!
+#     try:
+#         member = bot.get_clean_mentions(message)[0]
+#     except IndexError:
+#         await bot.safe_send_message(message.channel, "Sorry, can't find a user to kick.")
+#         return
+#     if message.channel.is_private:
+#         await bot.safe_send_message(message.channel, "You have to be in a server to kick someone.")
+#         return
+#     elif not message.author.server_permissions.kick_members:
+#         await bot.safe_send_message(message.channel, "You don't have permission to do kick people.")
+#         return
+#     # Get the user
+#     if member is None:
+#         try:
+#             member = discord.utils.get(message.server.members, name=ai["entities"]["user"][0]["value"])
+#         except KeyError:
+#             await bot.safe_send_message(message.channel, "Sorry, I couldn't find a user to kick.")
+#             return
+#     # Kick the user
+#     kick = await bot.safe_kick(member)
+#     if kick:
+#         await bot.safe_send_message(message.channel, ":ok_hand: ***{} has been kicked!***".format(member.mention))
 
 
 @register("configuration.load")

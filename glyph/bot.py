@@ -127,7 +127,7 @@ class GlyphBot(discord.Client):
             spoilers_keywords = set(map(lambda x: x.lower(), config["spoilers"]["keywords"]))
             split_message = set(map(str.lower, re.findall(r"[\w']+", message.clean_content)))
             if spoilers_keywords.intersection(split_message) and not (message.channel.name == spoilers_channel):
-                await self.safe_add_reaction(message, "\u26A0")  # React with a warning emoji
+                await self.messaging.add_reaction(message, "\u26A0")  # React with a warning emoji
         # FA QuickView
         r = fa.Submission.regex
         if r.search(message.clean_content) and config["quickview"]["fa"]["enabled"]:
@@ -139,7 +139,7 @@ class GlyphBot(discord.Client):
                     try:
                         submission = fa.Submission(id=link_id)
                         embed = submission.get_embed(thumbnail=config["quickview"]["fa"]["thumbnail"])
-                        await self.safe_send_message(message.channel, embed=embed, deletewith=message)
+                        await message.reply(embed=embed)
                     except ValueError:
                         pass
             return
@@ -152,7 +152,7 @@ class GlyphBot(discord.Client):
                 try:
                     channel = picarto.Channel(name=link_name)
                     embed = channel.get_embed()
-                    await self.safe_send_message(message.channel, embed=embed, deletewith=message)
+                    await message.reply(embed=embed)
                 except ValueError:
                     pass
             return
@@ -183,7 +183,7 @@ class GlyphBot(discord.Client):
             # Remove the mention from the message so it can be processed right
             clean_message = re.sub("@{}".format(member.display_name), "", message.clean_content).strip()
             if not clean_message:  # If there's no message
-                await self.safe_send_message(message.channel, "You have to say something.")
+                await message.reply("You have to say something.")
                 return
             # Remove self from the list of mentions in the message
             clean_mentions = message.mentions
@@ -255,7 +255,7 @@ class GlyphBot(discord.Client):
         if message.id in self.deletewith_messages:
             embed = discord.Embed(description="<:xmark:344316007164149770> Removed!", color=0xFF0000)
             msg = self.deletewith_messages.get(message.id)
-            await self.safe_edit_message(msg, embed=embed, expire_time=5, clear_reactions=True)
+            await self.messaging.edit_message(msg, embed=embed, expire_time=5, clear_reactions=True)
             self.deletewith_messages.pop(message.id)
 
     async def on_server_join(self, server):
