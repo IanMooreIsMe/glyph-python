@@ -9,7 +9,7 @@ class MessagingOrchestrator:
 
     def __init__(self, client, logger):
         self.client = client
-        self.log = logger.log
+        self.log = logger
         self.ledger = {}
         self.cooldowns = {}
         self.incompletes = set()
