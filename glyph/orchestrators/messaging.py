@@ -142,8 +142,11 @@ class EnhancedMessage(discord.Message):
             if hasattr(message, slot):
                 self.__setattr__(slot, getattr(message, slot))
 
-    async def reply(self, content=None, *, embed=None):
-        return await self.client.messaging.send(self, content=content, embed=embed, trigger=self)
+    async def reply(self, content=None, *, embed=None, preserve=False):
+        trigger = self
+        if preserve:
+            trigger = None
+        return await self.client.messaging.send(self, content=content, embed=embed, trigger=trigger)
 
     async def delete(self):
         await self.client.messaging.delete(self)

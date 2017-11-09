@@ -62,7 +62,7 @@ async def purge(message):
                                       "Purging everything since {}.".format(humanize.naturaltime(time)),
                           timestamp=datetime.utcnow())
     embed.set_footer(text="Moderation")
-    status = await message.reply(embed=embed)
+    status = await message.reply(embed=embed, preserve=True)
     deleted = await message.client.messaging.purge_from(channel, limit=100000, after=time,
                                                    check=lambda msg: msg.id != status.id)
     if deleted:
@@ -71,7 +71,7 @@ async def purge(message):
                                           "Purged {} messages since {}.".format(len(deleted), humanize.naturaltime(time)),
                               timestamp=datetime.utcnow())
         embed.set_footer(text="Moderation")
-        await message.client.messaging.edit(status, embed=embed)
+        await message.client.messaging.edit(status, embed=embed, expire_time=10)
     else:
         embed = discord.Embed(title="Purge Failed",
                               description="<:xmark:344316007164149770> Either I was given an invalid duration or "
