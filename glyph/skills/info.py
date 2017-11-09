@@ -52,6 +52,6 @@ async def status(message):
         return embed
 
     start = datetime.now().microsecond
-    msg = await message.reply(message, embed=status_embed("?"))
+    msg = await message.reply(embed=status_embed("?"))
     diff = int((datetime.now().microsecond - start) / 1000)
     await message.client.messaging.edit(msg, embed=status_embed(diff))

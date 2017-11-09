@@ -44,12 +44,15 @@ class MessagingOrchestrator:
                     tabulated_description = embed.description.replace("\n", "\n\t")
                 except AttributeError:
                     tabulated_description = None
-                msg = await message.reply("**Title** \n\t{}\n**Description** \n\t{}\n**Images** \n\t{}\n\t{}"
-                                          "\n*No embed permission compatibility mode, "
-                                          "please grant embed permission*".format(embed.title, tabulated_description,
-                                                                                  embed.image.url, embed.thumbnail.url))
+                msg = await self.client.send_message(message.channel,
+                                                     "**Title** \n\t{}\n**Description** \n\t{}\n**Images** \n\t{}\n\t{}"
+                                                     "\n*No embed permission compatibility mode, "
+                                                     "please grant embed permission*".format(embed.title,
+                                                                                             tabulated_description,
+                                                                                             embed.image.url,
+                                                                                             embed.thumbnail.url))
             else:
-                msg = await message.reply(content)
+                msg = await self.client.send_message(message.channel, content)
 
             if msg and expire_time:
                 await asyncio.sleep(expire_time)
@@ -75,7 +78,7 @@ class MessagingOrchestrator:
         if clear_reactions:
             await self.clear_reactions(message)
         try:
-            msg = await self.client.edit_message(message, new, embed=embed)
+            msg = await self.client.edit_message(message=message, new_content=new, embed=embed)
 
             if msg and expire_time:
                 await asyncio.sleep(expire_time)
@@ -139,14 +142,14 @@ class EnhancedMessage(discord.Message):
                 self.__setattr__(slot, getattr(message, slot))
 
     async def reply(self, content=None, *, embed=None):
-        await self.client.messaging.send(self, content=content, embed=embed, trigger=self)
+        return await self.client.messaging.send(self, content=content, embed=embed, trigger=self)
 
     async def delete(self):
         await self.client.messaging.delete(self)
 
     async def edit(self, new=None, *, embed=None, expire_time=0, clear_reactions=False):
-        await self.client.messaging.edit(self, new=new, embed=embed, expire_time=expire_time,
-                                         clear_reactions=clear_reactions)
+        return await self.client.messaging.edit(self, new=new, embed=embed, expire_time=expire_time,
+                                                clear_reactions=clear_reactions)
 
     def _get_clean_mentions(self):
         # Get the member of the bot so the mention can be removed from the message
