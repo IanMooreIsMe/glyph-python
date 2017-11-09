@@ -28,7 +28,7 @@ async def status(message):
         last_restart = humanize.naturaltime(last_restart_timedelta)
         servers = humanize.intcomma(message.client.total_servers())
         members = humanize.intcomma(message.client.total_members())
-        messages = len(message.client.messages)
+        messages = len(message.client.messaging.ledger)
         memory = psutil.virtual_memory()
         memory_total = humanize.naturalsize(memory.total)
         memory_used = humanize.naturalsize(memory.used)
