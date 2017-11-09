@@ -56,7 +56,7 @@ class MessagingOrchestrator:
                 await self.delete(msg)
 
             if trigger is not None:
-                self.ledger.update({trigger.id: msg})
+                self.ledger.update({trigger.id: EnhancedMessage(self.client, msg)})
 
         except discord.Forbidden:
             self.log.warning("{} - {}: Cannot send message, no permission?".format(destination.server, destination.name))
@@ -75,11 +75,11 @@ class MessagingOrchestrator:
         if clear_reactions:
             await self.clear_reactions(message)
         try:
-            msg = await self.client.edit(message, new, embed=embed)
+            msg = await self.client.edit_mesage(message, new, embed=embed)
 
             if msg and expire_time:
                 await asyncio.sleep(expire_time)
-                await self.client.delete(msg)
+                await self.delete(msg)
         except discord.NotFound:
             self.log.warning("Cannot edit message \"{}\", message not found".format(message.clean_content))
         except discord.HTTPException:
@@ -89,7 +89,7 @@ class MessagingOrchestrator:
 
     async def delete(self, message):
         try:
-            return await self.client.delete(message)
+            return await self.client.delete_message(message)
         except discord.Forbidden:
             self.log.warning("Cannot delete message \"{}\", no permission?".format(message.clean_content))
         except discord.NotFound:
