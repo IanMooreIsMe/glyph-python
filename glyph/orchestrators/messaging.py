@@ -144,6 +144,10 @@ class EnhancedMessage(discord.Message):
     async def delete(self):
         await self.client.messaging.delete(self)
 
+    async def edit(self, new=None, *, embed=None, expire_time=0, clear_reactions=False):
+        await self.client.messaging.edit(self, new=new, embed=embed, expire_time=expire_time,
+                                         clear_reactions=clear_reactions)
+
     def _get_clean_mentions(self):
         # Get the member of the bot so the mention can be removed from the message
         try:

@@ -254,7 +254,7 @@ class GlyphBot(discord.Client):
         if message.id in self.messaging.ledger:
             embed = discord.Embed(description="<:xmark:344316007164149770> Removed!", color=0xFF0000)
             msg = self.messaging.ledger.get(message.id)
-            await self.messaging.edit(msg, embed=embed, expire_time=5, clear_reactions=True)
+            await msg.edit(embed=embed, expire_time=5, clear_reactions=True)
             self.messaging.ledger.pop(message.id)
 
     async def on_server_join(self, server):
