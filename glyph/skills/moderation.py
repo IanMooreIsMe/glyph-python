@@ -71,7 +71,7 @@ async def purge(message):
                                           "Purged {} messages since {}.".format(len(deleted), humanize.naturaltime(time)),
                               timestamp=datetime.utcnow())
         embed.set_footer(text="Moderation")
-        await message.client.messaging.edit_message(status, embed=embed)
+        await message.client.messaging.edit(status, embed=embed)
     else:
         embed = discord.Embed(title="Purge Failed",
                               description="<:xmark:344316007164149770> Either I was given an invalid duration or "

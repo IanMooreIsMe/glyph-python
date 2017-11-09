@@ -28,7 +28,6 @@ class GlyphBot(discord.Client):
         self.total_members = lambda: sum(1 for _ in self.get_all_members())
         self.total_servers = lambda: len(self.servers)
         self.ready = False
-        self.deletewith_messages = {}
         self.incompletes = []
         self.skill_commander = skills.SkillCommander()
         super().__init__()
@@ -252,11 +251,11 @@ class GlyphBot(discord.Client):
     async def on_message_delete(self, message):
         if not self.ready:
             return
-        if message.id in self.deletewith_messages:
+        if message.id in self.messaging.ledger:
             embed = discord.Embed(description="<:xmark:344316007164149770> Removed!", color=0xFF0000)
-            msg = self.deletewith_messages.get(message.id)
-            await self.messaging.edit_message(msg, embed=embed, expire_time=5, clear_reactions=True)
-            self.deletewith_messages.pop(message.id)
+            msg = self.messaging.ledger.get(message.id)
+            await self.messaging.edit(msg, embed=embed, expire_time=5, clear_reactions=True)
+            self.messaging.ledger.pop(message.id)
 
     async def on_server_join(self, server):
         if not self.ready:

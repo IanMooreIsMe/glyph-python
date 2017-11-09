@@ -28,7 +28,7 @@ class MessagingOrchestrator:
         except discord.HTTPException:
             self.log.warning("{} - {}: Cannot send typing, failed.".format(destination.server, destination.name))
 
-    async def send(self, message, content=None, *, embed=None, expire_time=0):
+    async def send(self, message, content=None, *, embed=None, expire_time=0, trigger=None):
         destination = message.channel
 
         if content is None and embed is None:
@@ -53,7 +53,11 @@ class MessagingOrchestrator:
 
             if msg and expire_time:
                 await asyncio.sleep(expire_time)
-                await self.safe_delete_message(msg)
+                await self.delete(msg)
+
+            if trigger is not None:
+                self.ledger.update({trigger.id: msg})
+
         except discord.Forbidden:
             self.log.warning("{} - {}: Cannot send message, no permission?".format(destination.server, destination.name))
         except discord.NotFound:
@@ -135,7 +139,7 @@ class EnhancedMessage(discord.Message):
                 self.__setattr__(slot, getattr(message, slot))
 
     async def reply(self, content=None, *, embed=None):
-        await self.client.messaging.send(self, content=content, embed=embed)
+        await self.client.messaging.send(self, content=content, embed=embed, trigger=self)
 
     async def delete(self):
         await self.client.messaging.delete(self)
