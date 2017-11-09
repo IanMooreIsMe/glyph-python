@@ -75,7 +75,7 @@ class MessagingOrchestrator:
         if clear_reactions:
             await self.clear_reactions(message)
         try:
-            msg = await self.client.edit_mesage(message, new, embed=embed)
+            msg = await self.client.edit_message(message, new, embed=embed)
 
             if msg and expire_time:
                 await asyncio.sleep(expire_time)
