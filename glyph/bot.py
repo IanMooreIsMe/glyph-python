@@ -28,6 +28,8 @@ class GlyphBot(discord.Client):
         self.total_members = lambda: sum(1 for _ in self.get_all_members())
         self.total_servers = lambda: len(self.servers)
         self.ready = False
+        self.deletewith_messages = {}
+        self.incompletes = []
         self.skill_commander = skills.SkillCommander()
         super().__init__()
 
