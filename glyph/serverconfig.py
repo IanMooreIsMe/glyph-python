@@ -1,8 +1,13 @@
 import json
 import urllib.parse
 
-import psycopg2cffi as psycopg2
-from psycopg2cffi.extras import RealDictCursor
+try:
+    import psycopg2
+    from psycopg2.extras import RealDictCursor
+except ImportError:
+    # Fall back to psycopg2cffi
+    import psycopg2cffi as psycopg2
+    from psycopg2cffi.extras import RealDictCursor
 
 from . import hastebin
 

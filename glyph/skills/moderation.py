@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 
 import discord
 import humanize
+import parsedatetime as pdt
 
 from . import utils
 from .commander import register
@@ -20,35 +21,13 @@ async def purge(message):
         return
 
     def text_to_time(text):
-        secondsr = re.compile(r"(\d+)(?:\s|)(?:s|sec|second)(?:\b|s)", re.IGNORECASE)
-        minutesr = re.compile(r"(\d+)(?:\s|)(?:m|min|minute)(?:\b|s)", re.IGNORECASE)
-        hoursr = re.compile(r"(\d+)(?:\s|)(?:h|hour)(?:\b|s)", re.IGNORECASE)
-        daysr = re.compile(r"(\d+)(?:\s|)(?:d|day)(?:\b|s)", re.IGNORECASE)
-        weeksr = re.compile(r"(\d+)(?:\s|)(?:w|week)(?:\b|s)", re.IGNORECASE)
-        try:
-            seconds = int(secondsr.match(text).group(1))
-        except AttributeError:
-            seconds = 0
-        try:
-            minutes = int(minutesr.match(text).group(1))
-        except AttributeError:
-            minutes = 0
-        try:
-            hours = int(hoursr.match(text).group(1))
-        except AttributeError:
-            hours = 0
-        try:
-            days = int(daysr.match(text).group(1))
-        except AttributeError:
-            days = 0
-        try:
-            weeks = int(weeksr.match(text).group(1))
-        except AttributeError:
-            weeks = 0
-        delta = timedelta(days=days, seconds=seconds, minutes=minutes, hours=hours, weeks=weeks)
-        time = datetime.now() - delta
+        cal = pdt.Calendar()
+        time = datetime(*cal.parse(text, datetime.utcnow())[0][:6])
+        delta = datetime.utcnow() - time
+        if time.minute == 1:
+            time += timedelta(seconds=2)
         return time, delta
-    time, delta = text_to_time(duration)
+    time, delta = text_to_time(duration + " ago")
     if delta.days > 14:
         embed = discord.Embed(title="Purge Failed",
                               description="<:xmark:344316007164149770> "
@@ -59,16 +38,17 @@ async def purge(message):
         return
     embed = discord.Embed(title="Purging",
                           description="<:empty:344316006438797314> "
-                                      "Purging everything since {}.".format(humanize.naturaltime(time)),
+                                      "Purging everything since {}.".format(humanize.naturaltime(delta)),
                           timestamp=datetime.utcnow())
     embed.set_footer(text="Moderation")
     status = await message.reply(embed=embed, preserve=True)
     deleted = await message.client.messaging.purge_from(channel, limit=100000, after=time,
-                                                   check=lambda msg: msg.id != status.id)
+                                                        check=lambda msg: msg.id != status.id)
     if deleted:
         embed = discord.Embed(title="Purge Successful",
                               description="<:check:344316006040338434> "
-                                          "Purged {} messages since {}.".format(len(deleted), humanize.naturaltime(time)),
+                                          "Purged {} messages since {}.".format(len(deleted),
+                                                                                humanize.naturaltime(delta)),
                               timestamp=datetime.utcnow())
         embed.set_footer(text="Moderation")
         await message.client.messaging.edit(status, embed=embed, expire_time=10)
