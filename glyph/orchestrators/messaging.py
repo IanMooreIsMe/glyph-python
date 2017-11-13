@@ -59,7 +59,7 @@ class MessagingOrchestrator:
                 await self.delete(msg)
 
             if trigger is not None:
-                self.ledger.update({trigger.id: EnhancedMessage(self.client, msg)})
+                self.ledger.update({trigger.id: (msg.channel.id, msg.id)})
 
         except discord.Forbidden:
             self.log.warning("{} - {}: Cannot send message, no permission?".format(destination.server, destination.name))
