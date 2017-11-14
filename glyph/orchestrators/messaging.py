@@ -28,8 +28,7 @@ class MessagingOrchestrator:
         except discord.HTTPException:
             self.log.warning("{} - {}: Cannot send typing, failed.".format(destination.server, destination.name))
 
-    async def send(self, message, content=None, *, embed=None, expire_time=0, trigger=None):
-        destination = message.channel
+    async def send(self, destination, content=None, *, embed=None, expire_time=0, trigger=None):
 
         if content is None and embed is None:
             self.log.error("A message needs to have content!")
@@ -37,14 +36,14 @@ class MessagingOrchestrator:
 
         msg = None
         try:
-            if message.channel.permissions_for(await self.client.get_self_member(destination)).embed_links:
-                msg = await self.client.send_message(message.channel, content, embed=embed)
+            if destination.permissions_for(await self.client.get_self_member(destination)).embed_links:
+                msg = await self.client.send_message(destination, content, embed=embed)
             elif embed is not None:
                 try:
                     tabulated_description = embed.description.replace("\n", "\n\t")
                 except AttributeError:
                     tabulated_description = None
-                msg = await self.client.send_message(message.channel,
+                msg = await self.client.send_message(destination,
                                                      "**Title** \n\t{}\n**Description** \n\t{}\n**Images** \n\t{}\n\t{}"
                                                      "\n*No embed permission compatibility mode, "
                                                      "please grant embed permission*".format(embed.title,
@@ -52,7 +51,7 @@ class MessagingOrchestrator:
                                                                                              embed.image.url,
                                                                                              embed.thumbnail.url))
             else:
-                msg = await self.client.send_message(message.channel, content)
+                msg = await self.client.send_message(destination, content)
 
             if msg and expire_time:
                 await asyncio.sleep(expire_time)
@@ -62,9 +61,11 @@ class MessagingOrchestrator:
                 self.ledger.update({trigger.id: (msg.channel.id, msg.id)})
 
         except discord.Forbidden:
-            self.log.warning("{} - {}: Cannot send message, no permission?".format(destination.server, destination.name))
+            self.log.warning("{} - {}: Cannot send message, no permission?".format(destination.server,
+                                                                                   destination.name))
         except discord.NotFound:
-            self.log.warning("{} - {}: Cannot send message, invalid channel?".format(destination.server, destination.name))
+            self.log.warning("{} - {}: Cannot send message, invalid channel?".format(destination.server,
+                                                                                     destination.name))
         except discord.HTTPException:
             self.log.warning("{} - {}: Cannot send message, failed.".format(destination.server, destination.name))
 
@@ -150,7 +151,7 @@ class EnhancedMessage(discord.Message):
         trigger = self
         if preserve:
             trigger = None
-        return await self.client.messaging.send(self, content=content, embed=embed, trigger=trigger)
+        return await self.client.messaging.send(self.channel, content=content, embed=embed, trigger=trigger)
 
     async def delete(self):
         await self.client.messaging.delete(self)

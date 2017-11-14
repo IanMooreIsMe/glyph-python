@@ -256,7 +256,7 @@ class GlyphBot(discord.Client):
             self.messaging.ledger.pop(message.id)
             channel = self.get_channel(id=data[0])
             msg = await self.get_message(channel=channel, id=data[1])
-            await self.add_reaction(msg, "\u274C")
+            await self.messaging.add_reaction(msg, "\u274C")
             await asyncio.sleep(1)
             await self.messaging.delete(msg)
 
