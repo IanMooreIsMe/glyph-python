@@ -5,10 +5,9 @@ praw
 wikia
 humanize
 psutil
-pillow
 pytz
 requests
 wikipedia
 wiktionaryparser
-psycopg2cffi
+psycopg2
 parsedatetime
