@@ -25,8 +25,6 @@ class GlyphBot(discord.Client):
         self.apiai = apiai.AIProcessor(client_access_token=environ.get("APIAI_TOKEN"))
         self.configdb = ConfigDatabase(environ.get("DATABASE_URL"))
         self.messaging = orchestrators.MessagingOrchestrator(self, log)
-        self.total_members = lambda: sum(1 for _ in self.get_all_members())
-        self.total_servers = lambda: len(self.servers)
         self.ready = False
         self.incompletes = []
         self.skill_commander = skills.SkillCommander()
@@ -52,6 +50,14 @@ class GlyphBot(discord.Client):
             log.info("Updated Discord Bots count with {} servers!".format(count))
         else:
             log.warning("Failed to update Discord Bots server count with error code {}!".format(req.status_code))
+
+    @property
+    def total_members(self):
+        return sum(1 for _ in self.get_all_members())
+
+    @property
+    def total_servers(self):
+        return len(self.servers)
 
     async def safe_kick(self, member):
         kick = None
@@ -84,7 +90,7 @@ class GlyphBot(discord.Client):
         await self.change_presence(game=discord.Game(name="Armax Arsenal Arena"))
         farm_servers = []
         for server in list(self.servers):
-            total_members = len(server.members)
+            total_members = len(server.members) or 1
             total_bots = len(list(filter(lambda member: member.bot, server.members)))
             total_humans = total_members - total_bots
             percentage_bots = round(total_bots/total_members*100, 2)
@@ -99,7 +105,7 @@ class GlyphBot(discord.Client):
         self.configdb.load_all()
         log.info("Loaded {} configurations from the database.".format(len(self.configdb.configs)))
         await self.update_server_count()
-        log.info("Connected to {} server(s) with {} members.".format(self.total_servers(), self.total_members()))
+        log.info("Connected to {} server(s) with {} members.".format(self.total_servers, self.total_members))
         self.ready = True
 
     async def get_self_member(self, channel):
