@@ -21,7 +21,12 @@ class SkillCommander:
         action = ai.get_action_depth(0)
         if "ignore" in str(ai.contexts) and not ai.get_action_depth(1) == "insult":  # If ignoring the user
             await message.reply("No {}, I'm done helping you for now.".format(message.author.mention))
+        elif action == "fallback":
+            reacted = await message.react("\u2753")
+            if reacted is False:
+                await message.reply(ai.response)
         elif action == "skill" and not ai.action_incomplete:  # If not ignoring the user and no follow up intent
+            await message.client.messaging.send_typing(message)
             skill = ai.get_skill()
             try:
                 message.ai = ai

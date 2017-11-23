@@ -112,15 +112,15 @@ class MessagingOrchestrator:
         return purges
 
     async def add_reaction(self, message, emoji):
-        reaction = None
         channel = message.channel
         try:
-            reaction = await self.client.add_reaction(message, emoji)
+            await self.client.add_reaction(message, emoji)
+            return True
         except discord.Forbidden:
             self.log.warning("{} - {}: Cannot add reaction, no permission?".format(channel.server, channel.name))
         except discord.NotFound:
             self.log.warning("{} - {}: Cannot add reaction, invalid message or emoji?".format(channel.server, channel.name))
-        return reaction
+        return False
 
     async def clear_reactions(self, message):
         channel = message.channel
@@ -159,6 +159,9 @@ class EnhancedMessage(discord.Message):
     async def edit(self, new=None, *, embed=None, expire_time=0, clear_reactions=False):
         return await self.client.messaging.edit(self, new=new, embed=embed, expire_time=expire_time,
                                                 clear_reactions=clear_reactions)
+
+    async def react(self, emoji):
+        return await self.client.messaging.add_reaction(self, emoji)
 
     def _get_clean_mentions(self):
         # Get the member of the bot so the mention can be removed from the message

@@ -183,8 +183,6 @@ class GlyphBot(discord.Client):
             if not message.clean_content.startswith("@{}".format(member.display_name)) \
                     and not (message.channel.is_private or message.author in self.incompletes):
                 return
-            # Start by typing to indicate processing a successful message
-            await self.messaging.send_typing(message)
             # Remove the mention from the message so it can be processed right
             clean_message = re.sub("@{}".format(member.display_name), "", message.clean_content).strip()
             if not clean_message:  # If there's no message
