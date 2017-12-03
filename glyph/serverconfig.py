@@ -33,7 +33,7 @@ class ConfigDatabase(object):
         self.configs.clear()
         self.cur.execute("SELECT guild_id, wiki, selectable_roles, spoilers_channel, spoilers_keywords,"
                          " fa_quickview_enabled, fa_quickview_thumbnail, picarto_quickview_enabled, auditing_channel, "
-                         "auditing_joins, auditing_leaves, auditing_reactions FROM configuration")
+                         "auditing_joins, auditing_leaves, auditing_reactions FROM server_configs")
         rows = self.cur.fetchall()
         for row in rows:
             guild_id = row.get("guild_id")
@@ -45,7 +45,7 @@ class ConfigDatabase(object):
         self.open()
         self.cur.execute("SELECT guild_id, wiki, selectable_roles, spoilers_channel, spoilers_keywords,"
                          " fa_quickview_enabled, fa_quickview_thumbnail, picarto_quickview_enabled, auditing_channel, "
-                         "auditing_joins, auditing_leaves, auditing_reactions FROM configuration "
+                         "auditing_joins, auditing_leaves, auditing_reactions FROM server_configs "
                          "WHERE guild_id = (%s)", [guild_id])
         row = self.cur.fetchone()
         guild_id = row.get("guild_id")
@@ -83,7 +83,7 @@ class ConfigDatabase(object):
 
     def delete(self, guild_id):
         self.open()
-        self.cur.execute("DELETE FROM configuration WHERE guild_id = (%s)", [guild_id])
+        self.cur.execute("DELETE FROM server_configs WHERE guild_id = (%s)", [guild_id])
         self.conn.commit()
         try:
             self.configs.pop(guild_id)
@@ -103,7 +103,7 @@ class ConfigDatabase(object):
     def update(self, server, config):
         self.open()
         try:
-            self.cur.execute("INSERT INTO configuration"
+            self.cur.execute("INSERT INTO server_configs"
                              " (guild_id, wiki, selectable_roles, spoilers_channel, spoilers_keywords,"
                              " fa_quickview_enabled, fa_quickview_thumbnail, picarto_quickview_enabled, "
                              " auditing_channel, auditing_joins, auditing_leaves, auditing_reactions)"
