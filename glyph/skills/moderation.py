@@ -11,7 +11,8 @@ from .commander import register
 
 @register("moderation.purge")
 async def purge(message):
-    duration = message.ai.get_parameter("text_time")
+    duration = message.ai.get_parameter("duration")
+    duration = str(duration["amount"]) + duration["unit"]
     channel = message.channel
     if not message.author.permissions_in(channel).manage_messages and not channel.is_private:
         await message.reply("You don't have permission to purge messages!")
