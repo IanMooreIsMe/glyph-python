@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import random
 import re
 from datetime import datetime
 from json.decoder import JSONDecodeError
@@ -87,7 +88,7 @@ class GlyphBot(discord.Client):
 
     async def on_ready(self):
         log.info("Logged in as {} ({})".format(self.user.name, self.user.id))
-        await self.change_presence(game=discord.Game(name="Armax Arsenal Arena"))
+        await self.change_presence(game=discord.Game(name="Armax Arsenal Arena", type=random.choice([0,3])))
         farm_servers = []
         for server in list(self.servers):
             total_members = len(server.members) or 1
